@@ -4,7 +4,7 @@ import subprocess
 import argparse
 import shutil
 
-HOME_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+HOME_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 GN_ARGS = [
     'target_os="win"',
