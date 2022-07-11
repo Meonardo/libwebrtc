@@ -25,6 +25,8 @@ class VideoFrameBufferImpl : public RTCVideoFrame {
 
   int height() const override;
 
+  const uint8_t* RawBuffer() const override;
+
   const uint8_t* DataY() const override;
 
   const uint8_t* DataU() const override;

@@ -25,7 +25,13 @@ scoped_refptr<RTCVideoFrame> VideoFrameBufferImpl::Copy() {
   return frame;
 }
 
+const uint8_t* VideoFrameBufferImpl::RawBuffer() const {
+  return buffer_->GetI420()->DataY();
+}
+
 int VideoFrameBufferImpl::width() const {
+  /*RTC_LOG(LS_ERROR) << "VideoFrameBuffer: "
+                    << VideoFrameBufferTypeToString(buffer_->type());*/
   return buffer_->width();
 }
 
@@ -34,27 +40,52 @@ int VideoFrameBufferImpl::height() const {
 }
 
 const uint8_t* VideoFrameBufferImpl::DataY() const {
-  return buffer_->GetI420()->DataY();
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
+    auto i420 = buffer_->GetI420();
+    return i420->DataY();
+  } else {
+    return buffer_->GetI420()->DataY();
+  }
 }
 
 const uint8_t* VideoFrameBufferImpl::DataU() const {
-  return buffer_->GetI420()->DataU();
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
+    return buffer_->ToI420()->DataU();
+  } else {
+    return buffer_->GetI420()->DataU();
+  }
 }
 
 const uint8_t* VideoFrameBufferImpl::DataV() const {
-  return buffer_->GetI420()->DataV();
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
+    return buffer_->ToI420()->DataV();
+  } else {
+    return buffer_->GetI420()->DataV();
+  }
 }
 
 int VideoFrameBufferImpl::StrideY() const {
-  return buffer_->GetI420()->StrideY();
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
+    return buffer_->GetI420()->StrideY();
+  } else {
+    return buffer_->GetI420()->StrideY();
+  }
 }
 
 int VideoFrameBufferImpl::StrideU() const {
-  return buffer_->GetI420()->StrideU();
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
+    return buffer_->GetI420()->StrideU();
+  } else {
+    return buffer_->GetI420()->StrideU();
+  }
 }
 
 int VideoFrameBufferImpl::StrideV() const {
-  return buffer_->GetI420()->StrideV();
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
+    return buffer_->GetI420()->StrideV();
+  } else {
+    return buffer_->GetI420()->StrideV();
+  }
 }
 
 int VideoFrameBufferImpl::ConvertToARGB(Type type,
