@@ -30,8 +30,8 @@ const uint8_t* VideoFrameBufferImpl::RawBuffer() const {
 }
 
 int VideoFrameBufferImpl::width() const {
-  /*RTC_LOG(LS_ERROR) << "VideoFrameBuffer: "
-                    << VideoFrameBufferTypeToString(buffer_->type());*/
+  RTC_LOG(LS_ERROR) << "VideoFrameBuffer: "
+                    << VideoFrameBufferTypeToString(buffer_->type());
   return buffer_->width();
 }
 
@@ -40,52 +40,33 @@ int VideoFrameBufferImpl::height() const {
 }
 
 const uint8_t* VideoFrameBufferImpl::DataY() const {
-  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
+  /*if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
     auto i420 = buffer_->GetI420();
     return i420->DataY();
   } else {
-    return buffer_->GetI420()->DataY();
-  }
+    
+  }*/
+  return buffer_->GetI420()->DataY();
 }
 
 const uint8_t* VideoFrameBufferImpl::DataU() const {
-  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
-    return buffer_->ToI420()->DataU();
-  } else {
-    return buffer_->GetI420()->DataU();
-  }
+  return buffer_->GetI420()->DataU();
 }
 
 const uint8_t* VideoFrameBufferImpl::DataV() const {
-  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
-    return buffer_->ToI420()->DataV();
-  } else {
-    return buffer_->GetI420()->DataV();
-  }
+  return buffer_->GetI420()->DataV();
 }
 
 int VideoFrameBufferImpl::StrideY() const {
-  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
-    return buffer_->GetI420()->StrideY();
-  } else {
-    return buffer_->GetI420()->StrideY();
-  }
+  return buffer_->GetI420()->StrideY();
 }
 
 int VideoFrameBufferImpl::StrideU() const {
-  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
-    return buffer_->GetI420()->StrideU();
-  } else {
-    return buffer_->GetI420()->StrideU();
-  }
+  return buffer_->GetI420()->StrideU();
 }
 
 int VideoFrameBufferImpl::StrideV() const {
-  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
-    return buffer_->GetI420()->StrideV();
-  } else {
-    return buffer_->GetI420()->StrideV();
-  }
+  return buffer_->GetI420()->StrideV();
 }
 
 int VideoFrameBufferImpl::ConvertToARGB(Type type,

@@ -13,11 +13,11 @@
 #include "api/video_codecs/builtin_video_decoder_factory.h"
 #include "api/video_codecs/builtin_video_encoder_factory.h"
 #include "modules/audio_device/audio_device_impl.h"
-#if defined(USE_INTEL_MEDIA_SDK)
+
 #include "src/win/mediacapabilities.h"
 #include "src/win/msdkvideodecoderfactory.h"
 #include "src/win/msdkvideoencoderfactory.h"
-#endif
+
 #if defined(WEBRTC_IOS)
 #include "engine/sdk/objc/Framework/Classes/videotoolboxvideocodecfactory.h"
 #endif
@@ -25,7 +25,15 @@
 
 namespace libwebrtc {
 
-#if defined(USE_INTEL_MEDIA_SDK)
+static bool hardware_acceleration_enabled_;
+
+void GlobalConfiguration::SetVideoHardwareAccelerationEnabled(bool enabled) {
+  hardware_acceleration_enabled_ = enabled;
+}
+bool GlobalConfiguration::GetVideoHardwareAccelerationEnabled() {
+  return hardware_acceleration_enabled_;
+}
+
 std::unique_ptr<webrtc::VideoEncoderFactory> CreateIntelVideoEncoderFactory() {
   if (!owt::base::MediaCapabilities::Get()) {
     return webrtc::CreateBuiltinVideoEncoderFactory();
@@ -39,7 +47,6 @@ std::unique_ptr<webrtc::VideoDecoderFactory> CreateIntelVideoDecoderFactory() {
   }
   return std::make_unique<owt::base::MSDKVideoDecoderFactory>();
 }
-#endif
 
 RTCPeerConnectionFactoryImpl::RTCPeerConnectionFactoryImpl(
     rtc::Thread* worker_thread,
@@ -59,17 +66,25 @@ bool RTCPeerConnectionFactoryImpl::Initialize() {
   }
 
   if (!rtc_peerconnection_factory_) {
-    rtc_peerconnection_factory_ = webrtc::CreatePeerConnectionFactory(
-        network_thread_, worker_thread_, signaling_thread_,
-        audio_device_module_.get(), webrtc::CreateBuiltinAudioEncoderFactory(),
-        webrtc::CreateBuiltinAudioDecoderFactory(),
-#if defined(USE_INTEL_MEDIA_SDK)
-        CreateIntelVideoEncoderFactory(), CreateIntelVideoDecoderFactory(),
-#else
-        webrtc::CreateBuiltinVideoEncoderFactory(),
-        webrtc::CreateBuiltinVideoDecoderFactory(),
-#endif
-        nullptr, nullptr);
+    if (GlobalConfiguration::GetVideoHardwareAccelerationEnabled()) {
+      rtc_peerconnection_factory_ = webrtc::CreatePeerConnectionFactory(
+          network_thread_, worker_thread_, signaling_thread_,
+          audio_device_module_.get(),
+          webrtc::CreateBuiltinAudioEncoderFactory(),
+          webrtc::CreateBuiltinAudioDecoderFactory(),
+          CreateIntelVideoEncoderFactory(),
+          CreateIntelVideoDecoderFactory(),
+          nullptr, nullptr);
+    } else {
+      rtc_peerconnection_factory_ = webrtc::CreatePeerConnectionFactory(
+          network_thread_, worker_thread_, signaling_thread_,
+          audio_device_module_.get(),
+          webrtc::CreateBuiltinAudioEncoderFactory(),
+          webrtc::CreateBuiltinAudioDecoderFactory(),
+          webrtc::CreateBuiltinVideoEncoderFactory(),
+          webrtc::CreateBuiltinVideoDecoderFactory(),
+          nullptr, nullptr);
+    }
   }
 
   if (!rtc_peerconnection_factory_.get()) {
