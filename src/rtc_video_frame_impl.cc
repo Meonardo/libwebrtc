@@ -30,8 +30,8 @@ const uint8_t* VideoFrameBufferImpl::RawBuffer() const {
 }
 
 int VideoFrameBufferImpl::width() const {
-  RTC_LOG(LS_ERROR) << "VideoFrameBuffer: "
-                    << VideoFrameBufferTypeToString(buffer_->type());
+  /*RTC_LOG(LS_ERROR) << "VideoFrameBuffer: "
+                    << VideoFrameBufferTypeToString(buffer_->type());*/
   return buffer_->width();
 }
 

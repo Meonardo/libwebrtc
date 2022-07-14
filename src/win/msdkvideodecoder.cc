@@ -21,13 +21,20 @@ namespace base {
 
 int32_t MSDKVideoDecoder::Release() {
     WipeMfxBitstream(&m_mfx_bs_);
+
+    delete m_pmfx_dec_;
+    m_pmfx_dec_ = nullptr;
+
     if (m_mfx_session_) {
       MSDKFactory* factory = MSDKFactory::Get();
       if (factory) {
         factory->UnloadMSDKPlugin(m_mfx_session_, &m_plugin_id_);
         factory->DestroySession(m_mfx_session_);
       }
+
+      m_mfx_session_ = nullptr;
     }
+
     m_pmfx_allocator_.reset();
     MSDK_SAFE_DELETE_ARRAY(m_pinput_surfaces_);
     inited_ = false;
@@ -168,8 +175,10 @@ bool MSDKVideoDecoder::Configure(const Settings& settings) {
 }
 
 int32_t MSDKVideoDecoder::Reset() {
-  m_pmfx_dec_->Close();
-  m_pmfx_dec_.reset(new MFXVideoDECODE(*m_mfx_session_));
+  delete m_pmfx_dec_;
+  m_pmfx_dec_ = nullptr;
+
+  m_pmfx_dec_ = new MFXVideoDECODE(*m_mfx_session_);
 
   return WEBRTC_VIDEO_CODEC_OK;
 }
@@ -188,8 +197,11 @@ int32_t MSDKVideoDecoder::InitDecodeOnCodecThread() {
   uint32_t codec_id = MFX_CODEC_AVC;
 
   if (inited_) {
-    if (m_pmfx_dec_)
-      m_pmfx_dec_->Close();
+    if (m_pmfx_dec_ != nullptr) {
+      delete m_pmfx_dec_;
+      m_pmfx_dec_ = nullptr;
+    }
+
     MSDK_SAFE_DELETE_ARRAY(m_pinput_surfaces_);
 
     if (m_pmfx_allocator_) {
@@ -237,7 +249,7 @@ int32_t MSDKVideoDecoder::InitDecodeOnCodecThread() {
     m_mfx_bs_.Data = new mfxU8[MSDK_BS_INIT_SIZE];
     m_mfx_bs_.MaxLength = MSDK_BS_INIT_SIZE;
     RTC_LOG(LS_ERROR) << "Creating underlying MSDK decoder.";
-    m_pmfx_dec_.reset(new MFXVideoDECODE(*m_mfx_session_));
+    m_pmfx_dec_ = new MFXVideoDECODE(*m_mfx_session_);
     if (m_pmfx_dec_ == nullptr) {
       return WEBRTC_VIDEO_CODEC_ERROR;
     }
@@ -267,7 +279,7 @@ int32_t MSDKVideoDecoder::Decode(
 
 dec_header:
   if (inited_ && !m_video_param_extracted) {
-    if (!m_pmfx_dec_.get()) {
+    if (m_pmfx_dec_ == nullptr) {
       RTC_LOG(LS_ERROR) << "MSDK decoder not created.";
     }
     sts = m_pmfx_dec_->DecodeHeader(&m_mfx_bs_, &m_pmfx_video_params_);
