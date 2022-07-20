@@ -6,6 +6,8 @@
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
 
+#include "src/win/nativehandlebuffer.h"
+
 namespace libwebrtc {
 
 VideoFrameBufferImpl::VideoFrameBufferImpl(
@@ -25,8 +27,16 @@ scoped_refptr<RTCVideoFrame> VideoFrameBufferImpl::Copy() {
   return frame;
 }
 
-const uint8_t* VideoFrameBufferImpl::RawBuffer() const {
-  return buffer_->GetI420()->DataY();
+bool VideoFrameBufferImpl::IsNative() const {
+  return buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative;
+}
+
+void* VideoFrameBufferImpl::RawBuffer() const {
+  owt::base::NativeHandleBuffer* buffer =
+      reinterpret_cast<owt::base::NativeHandleBuffer*>(buffer_.get());
+  //uint8_t* handle = reinterpret_cast<uint8_t*>(
+  //    buffer->native_handle());
+  return buffer->native_handle();
 }
 
 int VideoFrameBufferImpl::width() const {

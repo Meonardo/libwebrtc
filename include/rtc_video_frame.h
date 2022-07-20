@@ -32,7 +32,8 @@ class RTCVideoFrame : public RefCountInterface {
 
   virtual scoped_refptr<RTCVideoFrame> Copy() = 0;
 
-  virtual const uint8_t* RawBuffer() const = 0;
+  virtual void* RawBuffer() const = 0;
+  virtual bool IsNative() const = 0;
 
   // The resolution of the frame in pixels. For formats where some planes are
   // subsampled, this is the highest-resolution plane.

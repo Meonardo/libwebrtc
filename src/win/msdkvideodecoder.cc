@@ -378,17 +378,44 @@ retry:
     if (sts == MFX_ERR_NONE && syncp != nullptr) {
       sts = m_mfx_session_->SyncOperation(syncp, MSDK_DEC_WAIT_INTERVAL);
       if (sts >= MFX_ERR_NONE) {
+#if 1
+        mfxMemId dxMemId = pOutputSurface->Data.MemId;
+        mfxFrameInfo frame_info = pOutputSurface->Info;
+        mfxHDLPair pair = {nullptr};
+        // Maybe we should also send the allocator as part of the frame
+        // handle for locking/unlocking purpose.
+        m_pmfx_allocator_->GetFrameHDL(dxMemId, (mfxHDL*)&pair);
+        if (callback_) {
+          surface_handle_->d3d11_device = d3d11_device_.p;
+          surface_handle_->texture =
+              reinterpret_cast<ID3D11Texture2D*>(pair.first);
+          // Texture_array_index not used when decoding with MSDK.
+          surface_handle_->texture_array_index = 0;
+          D3D11_TEXTURE2D_DESC texture_desc;
+          memset(&texture_desc, 0, sizeof(texture_desc));
+          surface_handle_->texture->GetDesc(&texture_desc);
+
+          // TODO(johny): we should extend the buffer structure to include
+          // not only the CropW|CropH value, but also the CropX|CropY for the
+          // renderer to correctly setup the video processor input view.
+          rtc::scoped_refptr<owt::base::NativeHandleBuffer> buffer =
+              new rtc::RefCountedObject<owt::base::NativeHandleBuffer>(
+                  (void*)surface_handle_.get(), frame_info.CropW,
+                  frame_info.CropH);
+          webrtc::VideoFrame decoded_frame(buffer, inputImage.Timestamp(), 0,
+                                           webrtc::kVideoRotation_0);
+          decoded_frame.set_ntp_time_ms(inputImage.ntp_time_ms_);
+          decoded_frame.set_timestamp(inputImage.Timestamp());
+          callback_->Decoded(decoded_frame);
+        }
+#else
         mfxFrameData frame_data = pOutputSurface->Data;
         mfxMemId dxMemId = frame_data.MemId;
         mfxFrameInfo frame_info = pOutputSurface->Info;
 
         m_pmfx_allocator_->LockFrame(dxMemId, &frame_data);
-  
-        /*static rtc::scoped_refptr<I420Buffer> Copy(
-            int width, int height, const uint8_t* data_y, int stride_y,
-            const uint8_t* data_u, int stride_u, const uint8_t* data_v,
-            int stride_v);*/
-        int w = frame_info.Width;
+        // always nv12
+        /*int w = frame_info.Width;
         int h = frame_info.Height;
         int stride_uv = (w + 1) / 2;
         uint8_t* data_y = frame_data.Y;
@@ -398,18 +425,24 @@ retry:
         rtc::scoped_refptr<webrtc::I420Buffer> i420_buffer =
             webrtc::I420Buffer::Copy(w, h, data_y, w, data_u, stride_uv, data_v,
                                      stride_uv);
-        rtc::scoped_refptr<VideoFrameBuffer> buffer = std::move(i420_buffer);
-
-        // m_pmfx_allocator_->UnlockFrame(dxMemId, &frame_data);
+        rtc::scoped_refptr<VideoFrameBuffer> buffer = std::move(i420_buffer);*/
 
         if (callback_) {
-          webrtc::VideoFrame decoded_frame(buffer,
-                                           inputImage.Timestamp(), 0,
+          rtc::scoped_refptr<owt::base::NativeHandleBuffer> buffer =
+              new rtc::RefCountedObject<owt::base::NativeHandleBuffer>(
+                  (void*)frame_data.Y, frame_info.CropW,
+                  frame_info.CropH);
+          webrtc::VideoFrame decoded_frame(buffer, inputImage.Timestamp(), 0,
                                            webrtc::kVideoRotation_0);
           decoded_frame.set_ntp_time_ms(inputImage.ntp_time_ms_);
           decoded_frame.set_timestamp(inputImage.Timestamp());
           callback_->Decoded(decoded_frame);
         }
+        
+        m_pmfx_allocator_->UnlockFrame(dxMemId, &frame_data);
+#endif
+        
+
       }
     } else if (MFX_ERR_MORE_DATA == sts) {
       return WEBRTC_VIDEO_CODEC_OK;
