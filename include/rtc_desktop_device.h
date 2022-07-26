@@ -122,17 +122,9 @@ class RTCDesktopCapturer : public RefCountInterface {
 
 class RTCDesktopDevice : public RefCountInterface {
  public:
-  virtual scoped_refptr<RTCDesktopCapturer> CreateScreenCapturer(uint64_t screen_id) = 0;
-  virtual scoped_refptr<RTCDesktopCapturer> CreateWindowCapturer(uint64_t window_id) = 0;
-
   virtual scoped_refptr<RTCDesktopCapturer> CreateDesktopCapturer(
       std::unique_ptr<LocalDesktopStreamObserver> source_observer,
       std::shared_ptr<LocalDesktopStreamParameters> params) = 0;
-
-  virtual bool GetScreenList(SourceList& sources) = 0;
-  virtual bool GetWindowList(SourceList& sources) = 0;
-  virtual SourceList EnumerateWindows() = 0;
-  virtual SourceList EnumerateScreens() = 0;
 
  protected:
   virtual ~RTCDesktopDevice() {}

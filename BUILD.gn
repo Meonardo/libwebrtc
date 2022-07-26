@@ -203,8 +203,8 @@ rtc_shared_library("libwebrtc") {
       "src/interanl/desktop_capturer.h",
       "src/internal/desktop_capturer.cc",
 
-      "src/interanl/desktopcapturer.h",
-      "src/internal/desktopcapturer.cc",
+      "src/interanl/base_desktop_capturer.h",
+      "src/internal/base_desktop_capturer.cc",
     ]
      deps += [
       "../modules/desktop_capture",
