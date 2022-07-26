@@ -4,7 +4,9 @@
 
 #include "msdkvideobase.h"
 #include "mfxadapter.h"
-#include "api/video/i420_buffer.h"
+//#include "api/video/i420_buffer.h"
+#include "third_party/libyuv/include/libyuv/convert.h"
+#include "api/video/nv12_buffer.h"
 #include "src/win/nativehandlebuffer.h"
 #include "src/win/d3d11_allocator.h"
 #include "src/win/msdkvideodecoder.h"
@@ -414,31 +416,38 @@ retry:
         mfxFrameInfo frame_info = pOutputSurface->Info;
 
         m_pmfx_allocator_->LockFrame(dxMemId, &frame_data);
+
         // always nv12
-        /*int w = frame_info.Width;
+        int w = frame_info.Width;
         int h = frame_info.Height;
         int stride_uv = (w + 1) / 2;
         uint8_t* data_y = frame_data.Y;
         uint8_t* data_u = frame_data.U;
         uint8_t* data_v = frame_data.V;
 
-        rtc::scoped_refptr<webrtc::I420Buffer> i420_buffer =
-            webrtc::I420Buffer::Copy(w, h, data_y, w, data_u, stride_uv, data_v,
-                                     stride_uv);
-        rtc::scoped_refptr<VideoFrameBuffer> buffer = std::move(i420_buffer);*/
+        // Convert instead of making a copy.
+        // Note: libvpx doesn't support creating NV12 image directly.
+        // Due to the bitstream structure such a change would just hide the
+        // conversion operation inside the decode call.
+        rtc::scoped_refptr<NV12Buffer> nv12_buffer = webrtc::NV12Buffer::Create(w, h);
+        if (nv12_buffer.get()) {
+          libyuv::I420ToNV12(data_y, w, data_u, stride_uv, data_v, stride_uv,
+                             nv12_buffer->MutableDataY(),
+                             nv12_buffer->StrideY(),
+                             nv12_buffer->MutableDataUV(),
+                             nv12_buffer->StrideUV(), w, h);
 
-        if (callback_) {
-          rtc::scoped_refptr<owt::base::NativeHandleBuffer> buffer =
-              new rtc::RefCountedObject<owt::base::NativeHandleBuffer>(
-                  (void*)frame_data.Y, frame_info.CropW,
-                  frame_info.CropH);
-          webrtc::VideoFrame decoded_frame(buffer, inputImage.Timestamp(), 0,
-                                           webrtc::kVideoRotation_0);
-          decoded_frame.set_ntp_time_ms(inputImage.ntp_time_ms_);
-          decoded_frame.set_timestamp(inputImage.Timestamp());
-          callback_->Decoded(decoded_frame);
+          rtc::scoped_refptr<VideoFrameBuffer> buffer = std::move(nv12_buffer);
+
+          if (callback_) {
+            webrtc::VideoFrame decoded_frame(buffer, inputImage.Timestamp(), 0,
+                                             webrtc::kVideoRotation_0);
+            decoded_frame.set_ntp_time_ms(inputImage.ntp_time_ms_);
+            decoded_frame.set_timestamp(inputImage.Timestamp());
+            callback_->Decoded(decoded_frame);
+          }
         }
-        
+
         m_pmfx_allocator_->UnlockFrame(dxMemId, &frame_data);
 #endif
         

@@ -17,12 +17,13 @@
 #include "media/base/video_broadcaster.h"
 #include "pc/video_track_source.h"
 #include "rtc_base/thread.h"
-#include "rtc_desktop_device.h"
 #include "src/internal/vcm_capturer.h"
 #include "src/internal/video_capturer.h"
 #include "third_party/libyuv/include/libyuv.h"
 
 #include "rtc_types.h"
+
+#include "src/internal/desktopcapturer.h"
 
 // std::unique_ptr<cricket::VideoCapturer> video_device =
 // std::unique_ptr<cricket::VideoCapturer>(new DesktopCapturerDeviceImpl());
@@ -76,6 +77,67 @@ class ScreenCapturerTrackSource : public webrtc::VideoTrackSource {
   }
 
   std::unique_ptr<DesktopCapturer> capturer_;
+};
+
+// The proxy capturer to actual VideoCaptureModule implementation.
+class CustomizedVideoCapturer
+    : public VideoCapturer,
+      public rtc::VideoSinkInterface<webrtc::VideoFrame> {
+ public:
+  static CustomizedVideoCapturer* Create(
+      std::shared_ptr<libwebrtc::LocalDesktopStreamParameters> parameters,
+      std::unique_ptr<libwebrtc::LocalDesktopStreamObserver> observer);
+
+  CustomizedVideoCapturer();
+  virtual ~CustomizedVideoCapturer();
+
+  // VideoSinkInterfaceImpl
+  void OnFrame(const webrtc::VideoFrame& frame) override;
+
+  bool Init(std::shared_ptr<libwebrtc::LocalDesktopStreamParameters> parameters,
+            std::unique_ptr<libwebrtc::LocalDesktopStreamObserver> observer);
+  void Destroy();
+
+  rtc::scoped_refptr<webrtc::VideoCaptureModule> vcm_;
+  webrtc::VideoCaptureCapability capability_;
+};
+
+class LocalDesktopCaptureTrackSource : public webrtc::VideoTrackSource {
+ public:
+  static rtc::scoped_refptr<LocalDesktopCaptureTrackSource> Create(
+      std::shared_ptr<libwebrtc::LocalDesktopStreamParameters> parameters,
+      std::unique_ptr<libwebrtc::LocalDesktopStreamObserver> observer) {
+    std::unique_ptr<CustomizedVideoCapturer> capturer;
+    capturer = absl::WrapUnique(
+        CustomizedVideoCapturer::Create(parameters, std::move(observer)));
+
+    if (capturer)
+      return new rtc::RefCountedObject<LocalDesktopCaptureTrackSource>(
+          std::move(capturer));
+
+    return nullptr;
+  }
+
+  static rtc::scoped_refptr<LocalDesktopCaptureTrackSource> Create(
+      std::unique_ptr<CustomizedVideoCapturer> capturer) {
+    if (capturer) {
+      return new rtc::RefCountedObject<LocalDesktopCaptureTrackSource>(
+          std::move(capturer));
+    }
+    return nullptr;
+  }
+
+ protected:
+  explicit LocalDesktopCaptureTrackSource(
+      std::unique_ptr<CustomizedVideoCapturer> capturer)
+      : webrtc::VideoTrackSource(/*remote=*/false),
+        capturer_(std::move(capturer)) {}
+
+ private:
+  rtc::VideoSourceInterface<webrtc::VideoFrame>* source() override {
+    return capturer_.get();
+  }
+  std::unique_ptr<CustomizedVideoCapturer> capturer_;
 };
 
 }  // namespace internal

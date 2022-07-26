@@ -17,13 +17,19 @@ namespace libwebrtc {
 class RTCDesktopCapturerImpl : public RTCDesktopCapturer {
  public:
   RTCDesktopCapturerImpl(std::unique_ptr<webrtc::internal::DesktopCapturer> video_capturer);
+  RTCDesktopCapturerImpl(std::unique_ptr<webrtc::internal::CustomizedVideoCapturer> video_capturer);
       
   std::unique_ptr<webrtc::internal::DesktopCapturer> video_capturer() {
       return std::unique_ptr<webrtc::internal::DesktopCapturer>(std::move(video_capturer_));
   }
 
+  std::unique_ptr<webrtc::internal::CustomizedVideoCapturer> desktop_capturer() {
+      return std::unique_ptr<webrtc::internal::CustomizedVideoCapturer>(std::move(desktop_capturer_));
+  }
+
  private:
   std::unique_ptr<webrtc::internal::DesktopCapturer> video_capturer_;
+  std::unique_ptr<webrtc::internal::CustomizedVideoCapturer> desktop_capturer_;
 };
 
 class RTCDesktopDeviceImpl : public RTCDesktopDevice {
@@ -34,6 +40,10 @@ class RTCDesktopDeviceImpl : public RTCDesktopDevice {
   virtual scoped_refptr<RTCDesktopCapturer> CreateScreenCapturer(uint64_t screen_id) override;
 
   virtual scoped_refptr<RTCDesktopCapturer> CreateWindowCapturer(uint64_t window_id) override;
+
+  virtual scoped_refptr<RTCDesktopCapturer> CreateDesktopCapturer(
+      std::unique_ptr<LocalDesktopStreamObserver> source_observer,
+      std::shared_ptr<LocalDesktopStreamParameters> params) override;
 
   webrtc::DesktopCaptureOptions CreateOptions();
 

@@ -13,12 +13,12 @@ config("external_config") {
   include_dirs = [
       "include",
   ]
-  if(is_win){
+  if (is_win) {
       defines = [ "LIB_WEBRTC_API_DLL", ]
   }
 }
 
-rtc_shared_library("libwebrtc"){
+rtc_shared_library("libwebrtc") {
   sources = [
     "include/libwebrtc.h",
     "include/rtc_audio_device.h",
@@ -103,7 +103,7 @@ rtc_shared_library("libwebrtc"){
     "src/rtc_dtmf_sender_impl.h",
   ]
 
-  if(is_win) {
+  if (is_win) {
     sources += [
       "src/win/commontypes.h",
       "src/win/msdkcommon.h",
@@ -140,7 +140,6 @@ rtc_shared_library("libwebrtc"){
   include_dirs = [
     ".",
     "include",
-    
   ]
 
   defines = [ 
@@ -148,7 +147,7 @@ rtc_shared_library("libwebrtc"){
     "WEBRTC_INCLUDE_INTERNAL_AUDIO_DEVICE",
   ]
 
-  if(is_win) {
+  if (is_win) {
     include_dirs += [ "src/win/include" ]
     defines += [ "USE_INTEL_MEDIA_SDK" ]
   }
@@ -166,7 +165,7 @@ rtc_shared_library("libwebrtc"){
     #suppressed_configs += [ "//build/config/clang:find_bad_constructs" ]
   }
 
-  if(is_win){
+  if (is_win) {
     configs += [ "//build/config/win:windowed" ]
     defines += [ "WEBRTC_WIN", "LIB_WEBRTC_API_EXPORTS", ]
   }
@@ -195,18 +194,23 @@ rtc_shared_library("libwebrtc"){
   ]
   libs = []
 
-
-  if(is_win) {
-    defines += [ "RTC_DESKTOP_DEVICE"]
+  if (is_win) {
+    defines += [ "RTC_DESKTOP_DEVICE" ]
     sources += [
       "include/rtc_desktop_device.h",
       "src/rtc_desktop_device_impl.h",
       "src/rtc_desktop_device_impl.cc",    
       "src/interanl/desktop_capturer.h",
-      "src/internal/desktop_capturer.cc",      
+      "src/internal/desktop_capturer.cc",
+
+      "src/interanl/desktopcapturer.h",
+      "src/internal/desktopcapturer.cc",
     ]
-     deps += ["../modules/desktop_capture"]
+     deps += [
+      "../modules/desktop_capture",
+    ]
   }
+
   if(is_win) {
     libs += [ "libmfx_vs2015.lib" ]
     lib_dirs = [ "src\win\lib\x64" ]

@@ -251,8 +251,9 @@ scoped_refptr<RTCVideoSource> RTCPeerConnectionFactoryImpl::CreateVideoSource_d(
   //         static_cast<RTCMediaConstraintsImpl*>(constraints.get());*/
 
   rtc::scoped_refptr<webrtc::VideoTrackSourceInterface> rtc_source_track =
-      new rtc::RefCountedObject<webrtc::internal::ScreenCapturerTrackSource>(
-          capturer_impl->video_capturer());
+      new rtc::RefCountedObject<
+          webrtc::internal::LocalDesktopCaptureTrackSource>(
+          capturer_impl->desktop_capturer());
 
   scoped_refptr<RTCVideoSourceImpl> source = scoped_refptr<RTCVideoSourceImpl>(
       new RefCountedObject<RTCVideoSourceImpl>(rtc_source_track));

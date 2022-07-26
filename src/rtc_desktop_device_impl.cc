@@ -7,6 +7,9 @@ namespace libwebrtc {
 RTCDesktopCapturerImpl::RTCDesktopCapturerImpl(std::unique_ptr<webrtc::internal::DesktopCapturer> video_capturer)
       : video_capturer_(std::move(video_capturer)) {}
 
+RTCDesktopCapturerImpl::RTCDesktopCapturerImpl(std::unique_ptr<webrtc::internal::CustomizedVideoCapturer> video_capturer)
+    : desktop_capturer_(std::move(video_capturer)) {}
+
 RTCDesktopDeviceImpl::RTCDesktopDeviceImpl(rtc::Thread* signaling_thread) 
     : signaling_thread_(signaling_thread)
      {}
@@ -20,6 +23,7 @@ webrtc::DesktopCaptureOptions RTCDesktopDeviceImpl::CreateOptions() {
 #ifdef _MSC_VER
   options.set_allow_directx_capturer(false);
 #endif
+  options.set_allow_directx_capturer(true);
   return options;
 }
 
@@ -41,6 +45,18 @@ scoped_refptr<RTCDesktopCapturer> RTCDesktopDeviceImpl::CreateScreenCapturer(uin
             // std::unique_ptr<webrtc::internal::DesktopCapturer>(desktop_capturer)
             ));
       });
+}
+
+scoped_refptr<RTCDesktopCapturer> RTCDesktopDeviceImpl::CreateDesktopCapturer(
+    std::unique_ptr<LocalDesktopStreamObserver> source_observer,
+    std::shared_ptr<LocalDesktopStreamParameters> params) {
+  webrtc::internal::CustomizedVideoCapturer* desktop_capturer = 
+      webrtc::internal::CustomizedVideoCapturer::Create(params, std::move(source_observer));
+
+  return signaling_thread_->Invoke<scoped_refptr<RTCDesktopCapturerImpl>>(RTC_FROM_HERE, [desktop_capturer] {
+    return scoped_refptr<RTCDesktopCapturerImpl>(
+        new RefCountedObject<RTCDesktopCapturerImpl>(absl::WrapUnique(desktop_capturer)));
+  });
 }
 
 bool RTCDesktopDeviceImpl::GetScreenList(SourceList& sources) {
