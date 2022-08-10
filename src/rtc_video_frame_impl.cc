@@ -40,8 +40,6 @@ void* VideoFrameBufferImpl::RawBuffer() const {
 }
 
 int VideoFrameBufferImpl::width() const {
-  /*RTC_LOG(LS_ERROR) << "VideoFrameBuffer: "
-                    << VideoFrameBufferTypeToString(buffer_->type());*/
   return buffer_->width();
 }
 
@@ -50,12 +48,6 @@ int VideoFrameBufferImpl::height() const {
 }
 
 const uint8_t* VideoFrameBufferImpl::DataY() const {
-  /*if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) {
-    auto i420 = buffer_->GetI420();
-    return i420->DataY();
-  } else {
-    
-  }*/
   return buffer_->GetI420()->DataY();
 }
 

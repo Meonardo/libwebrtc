@@ -44,7 +44,7 @@ void VideoSinkAdapter::AddRenderer(
 void VideoSinkAdapter::RemoveRenderer(
     RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>* renderer) {
   RTC_LOG(INFO) << __FUNCTION__ << ": RemoveRenderer " << (void*)renderer;
-  //webrtc::MutexLock cs(crt_sec_.get());
+  webrtc::MutexLock cs(crt_sec_.get());
   renderers_.erase(
       std::remove_if(
           renderers_.begin(), renderers_.end(),

@@ -380,7 +380,7 @@ retry:
     if (sts == MFX_ERR_NONE && syncp != nullptr) {
       sts = m_mfx_session_->SyncOperation(syncp, MSDK_DEC_WAIT_INTERVAL);
       if (sts >= MFX_ERR_NONE) {
-#if 0
+#if 1
         mfxMemId dxMemId = pOutputSurface->Data.MemId;
         mfxFrameInfo frame_info = pOutputSurface->Info;
         mfxHDLPair pair = {nullptr};
@@ -439,8 +439,8 @@ retry:
         }
 
         m_pmfx_allocator_->UnlockFrame(dxMemId, &frame_data);
-     }
 #endif
+     }
     } else if (MFX_ERR_MORE_DATA == sts) {
       return WEBRTC_VIDEO_CODEC_OK;
     } else if (sts == MFX_WRN_DEVICE_BUSY) {
