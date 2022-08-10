@@ -4,9 +4,9 @@
 
 #include "msdkvideobase.h"
 #include "mfxadapter.h"
-//#include "api/video/i420_buffer.h"
+#include "api/video/i420_buffer.h"
 #include "third_party/libyuv/include/libyuv/convert.h"
-#include "api/video/nv12_buffer.h"
+//#include "api/video/nv12_buffer.h"
 #include "src/win/nativehandlebuffer.h"
 #include "src/win/d3d11_allocator.h"
 #include "src/win/msdkvideodecoder.h"
@@ -380,7 +380,7 @@ retry:
     if (sts == MFX_ERR_NONE && syncp != nullptr) {
       sts = m_mfx_session_->SyncOperation(syncp, MSDK_DEC_WAIT_INTERVAL);
       if (sts >= MFX_ERR_NONE) {
-#if 1
+#if 0
         mfxMemId dxMemId = pOutputSurface->Data.MemId;
         mfxFrameInfo frame_info = pOutputSurface->Info;
         mfxHDLPair pair = {nullptr};
@@ -417,42 +417,30 @@ retry:
 
         m_pmfx_allocator_->LockFrame(dxMemId, &frame_data);
 
-        // always nv12
-        int w = frame_info.Width;
-        int h = frame_info.Height;
-        int stride_uv = (w + 1) / 2;
-        uint8_t* data_y = frame_data.Y;
-        uint8_t* data_u = frame_data.U;
-        uint8_t* data_v = frame_data.V;
+        // convert NV12 to yuv420p
+        rtc::scoped_refptr<I420Buffer> i420_buffer =
+            I420Buffer::Create(frame_info.Width, frame_info.Height);
+        libyuv::NV12ToI420(
+            frame_data.Y, frame_data.Pitch, frame_data.UV, frame_data.Pitch,
+            i420_buffer->MutableDataY(), i420_buffer->StrideY(),
+            i420_buffer->MutableDataU(), i420_buffer->StrideU(),
+            i420_buffer->MutableDataV(), i420_buffer->StrideV(),
+            frame_info.Width, frame_info.Height);
 
-        // Convert instead of making a copy.
-        // Note: libvpx doesn't support creating NV12 image directly.
-        // Due to the bitstream structure such a change would just hide the
-        // conversion operation inside the decode call.
-        rtc::scoped_refptr<NV12Buffer> nv12_buffer = webrtc::NV12Buffer::Create(w, h);
-        if (nv12_buffer.get()) {
-          libyuv::I420ToNV12(data_y, w, data_u, stride_uv, data_v, stride_uv,
-                             nv12_buffer->MutableDataY(),
-                             nv12_buffer->StrideY(),
-                             nv12_buffer->MutableDataUV(),
-                             nv12_buffer->StrideUV(), w, h);
+        rtc::scoped_refptr<VideoFrameBuffer> buffer = std::move(i420_buffer);
 
-          rtc::scoped_refptr<VideoFrameBuffer> buffer = std::move(nv12_buffer);
-
-          if (callback_) {
-            webrtc::VideoFrame decoded_frame(buffer, inputImage.Timestamp(), 0,
-                                             webrtc::kVideoRotation_0);
+        if (callback_) {
+          webrtc::VideoFrame decoded_frame(buffer, inputImage.Timestamp(),
+                                           0,
+                                                webrtc::kVideoRotation_0);
             decoded_frame.set_ntp_time_ms(inputImage.ntp_time_ms_);
             decoded_frame.set_timestamp(inputImage.Timestamp());
             callback_->Decoded(decoded_frame);
-          }
         }
 
         m_pmfx_allocator_->UnlockFrame(dxMemId, &frame_data);
+     }
 #endif
-        
-
-      }
     } else if (MFX_ERR_MORE_DATA == sts) {
       return WEBRTC_VIDEO_CODEC_OK;
     } else if (sts == MFX_WRN_DEVICE_BUSY) {
