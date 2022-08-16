@@ -27,16 +27,20 @@ scoped_refptr<RTCVideoFrame> VideoFrameBufferImpl::Copy() {
   return frame;
 }
 
-bool VideoFrameBufferImpl::IsNative() const {
-  return buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative;
-}
+//bool VideoFrameBufferImpl::IsNative() const {
+//  return buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative;
+//}
+//
+//void* VideoFrameBufferImpl::RawBuffer() const {
+//  owt::base::NativeHandleBuffer* buffer =
+//      reinterpret_cast<owt::base::NativeHandleBuffer*>(buffer_.get());
+//  return buffer->native_handle();
+//}
 
-void* VideoFrameBufferImpl::RawBuffer() const {
-  owt::base::NativeHandleBuffer* buffer =
-      reinterpret_cast<owt::base::NativeHandleBuffer*>(buffer_.get());
-  //uint8_t* handle = reinterpret_cast<uint8_t*>(
-  //    buffer->native_handle());
-  return buffer->native_handle();
+RTCVideoFrame::PixelFormat VideoFrameBufferImpl::PixFormat() const {
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12)
+    return RTCVideoFrame::PixelFormat::kNV12;
+  return RTCVideoFrame::PixelFormat::kYV12;
 }
 
 int VideoFrameBufferImpl::width() const {
@@ -48,26 +52,45 @@ int VideoFrameBufferImpl::height() const {
 }
 
 const uint8_t* VideoFrameBufferImpl::DataY() const {
-  return buffer_->GetI420()->DataY();
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12) {
+    return buffer_->GetNV12()->DataY();
+  } else {
+    return buffer_->GetI420()->DataY();
+  }
 }
 
 const uint8_t* VideoFrameBufferImpl::DataU() const {
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12) {
+    return buffer_->GetNV12()->DataUV();
+  }
   return buffer_->GetI420()->DataU();
 }
 
 const uint8_t* VideoFrameBufferImpl::DataV() const {
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12) {
+    return nullptr;
+  }
   return buffer_->GetI420()->DataV();
 }
 
 int VideoFrameBufferImpl::StrideY() const {
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12) {
+    return buffer_->GetNV12()->StrideY();
+  }
   return buffer_->GetI420()->StrideY();
 }
 
 int VideoFrameBufferImpl::StrideU() const {
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12) {
+    return buffer_->GetNV12()->StrideUV();
+  }
   return buffer_->GetI420()->StrideU();
 }
 
 int VideoFrameBufferImpl::StrideV() const {
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12) {
+    return 0;
+  }
   return buffer_->GetI420()->StrideV();
 }
 

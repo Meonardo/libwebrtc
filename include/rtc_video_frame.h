@@ -9,6 +9,8 @@ class RTCVideoFrame : public RefCountInterface {
  public:
   enum class Type { kARGB, kBGRA, kABGR, kRGBA };
 
+  enum class PixelFormat { kYV12, kNV12 };
+
   enum VideoRotation {
     kVideoRotation_0 = 0,
     kVideoRotation_90 = 90,
@@ -32,8 +34,7 @@ class RTCVideoFrame : public RefCountInterface {
 
   virtual scoped_refptr<RTCVideoFrame> Copy() = 0;
 
-  virtual void* RawBuffer() const = 0;
-  virtual bool IsNative() const = 0;
+  virtual PixelFormat PixFormat() const = 0;
 
   // The resolution of the frame in pixels. For formats where some planes are
   // subsampled, this is the highest-resolution plane.

@@ -4,9 +4,6 @@
 
 #include "msdkvideobase.h"
 #include "mfxadapter.h"
-#include "api/video/i420_buffer.h"
-#include "third_party/libyuv/include/libyuv/convert.h"
-//#include "api/video/nv12_buffer.h"
 #include "src/win/nativehandlebuffer.h"
 #include "src/win/d3d11_allocator.h"
 #include "src/win/msdkvideodecoder.h"
@@ -380,7 +377,7 @@ retry:
     if (sts == MFX_ERR_NONE && syncp != nullptr) {
       sts = m_mfx_session_->SyncOperation(syncp, MSDK_DEC_WAIT_INTERVAL);
       if (sts >= MFX_ERR_NONE) {
-#if 1
+#if 0
         mfxMemId dxMemId = pOutputSurface->Data.MemId;
         mfxFrameInfo frame_info = pOutputSurface->Info;
         mfxHDLPair pair = {nullptr};
@@ -417,17 +414,12 @@ retry:
 
         m_pmfx_allocator_->LockFrame(dxMemId, &frame_data);
 
-        // convert NV12 to yuv420p
-        rtc::scoped_refptr<I420Buffer> i420_buffer =
-            I420Buffer::Create(frame_info.Width, frame_info.Height);
-        libyuv::NV12ToI420(
-            frame_data.Y, frame_data.Pitch, frame_data.UV, frame_data.Pitch,
-            i420_buffer->MutableDataY(), i420_buffer->StrideY(),
-            i420_buffer->MutableDataU(), i420_buffer->StrideU(),
-            i420_buffer->MutableDataV(), i420_buffer->StrideV(),
-            frame_info.Width, frame_info.Height);
-
-        rtc::scoped_refptr<VideoFrameBuffer> buffer = std::move(i420_buffer);
+        // always NV12
+        rtc::scoped_refptr<owt::base::NativeNV12Buffer> buffer =
+            new rtc::RefCountedObject<owt::base::NativeNV12Buffer>(
+                frame_data.Y, frame_data.Pitch,
+                frame_data.UV, frame_data.Pitch,
+                frame_info.Width, frame_info.Height);
 
         if (callback_) {
           webrtc::VideoFrame decoded_frame(buffer, inputImage.Timestamp(),

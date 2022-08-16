@@ -25,8 +25,7 @@ class VideoFrameBufferImpl : public RTCVideoFrame {
 
   int height() const override;
 
-  void* RawBuffer() const override;
-  bool IsNative() const override;
+  RTCVideoFrame::PixelFormat PixFormat() const override;
 
   const uint8_t* DataY() const override;
 

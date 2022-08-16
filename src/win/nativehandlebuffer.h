@@ -3,6 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 #ifndef OWT_NATIVE_HANDLE_BUFFER_H_
 #define OWT_NATIVE_HANDLE_BUFFER_H_
+
+#include <stdint.h>
+#include "api/video/i420_buffer.h"
+#include "third_party/libyuv/include/libyuv/convert.h"
 #include "api/video/video_frame_buffer.h"
 #include "rtc_base/checks.h"
 #include "api/scoped_refptr.h"
@@ -29,6 +33,50 @@ class NativeHandleBuffer : public VideoFrameBuffer{
    void* native_handle_;
    const int width_;
    const int height_;
+};
+
+class NativeNV12Buffer : public NV12BufferInterface {
+ public:
+  NativeNV12Buffer(const uint8_t* data_y,
+                     int stride_y,
+                     const uint8_t* data_uv,
+                     int stride_uv,
+                     int width,
+                     int height) : 
+      data_y_(data_y),
+      data_uv_(data_uv),
+      stride_y_(stride_y),        
+      stride_uv_(stride_uv),
+      width_(width),
+      height_(height) {}
+
+  Type type() const override { return Type::kNV12; }
+  int width() const override { return width_; }
+  int height() const override { return height_; }
+
+  const uint8_t* DataY() const override { return data_y_; }
+  const uint8_t* DataUV() const override { return data_uv_; }
+  int StrideY() const override { return stride_y_; }
+  int StrideUV() const override { return stride_uv_; }
+
+  rtc::scoped_refptr<I420BufferInterface> ToI420() override {
+    rtc::scoped_refptr<I420Buffer> i420_buffer =
+        I420Buffer::Create(width(), height());
+    libyuv::NV12ToI420(DataY(), StrideY(), DataUV(), StrideUV(),
+                       i420_buffer->MutableDataY(), i420_buffer->StrideY(),
+                       i420_buffer->MutableDataU(), i420_buffer->StrideU(),
+                       i420_buffer->MutableDataV(), i420_buffer->StrideV(),
+                       width(), height());
+    return i420_buffer;
+  }
+
+ private:
+  const uint8_t* data_y_;
+  const uint8_t* data_uv_;
+  const int stride_y_;
+  const int stride_uv_;
+  const int width_;
+  const int height_;
 };
 }  // namespace base
 }  // namespace owt
