@@ -311,4 +311,9 @@ scoped_refptr<RTCAudioTrack> RTCPeerConnectionFactoryImpl::CreateAudioTrack(
   return track;
 }
 
+RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>*
+RTCPeerConnectionFactoryImpl::CreateVideoD3D11Renderer(HWND hwnd) {
+  return new VideoD3D11Renderer(hwnd);
+}
+
 }  // namespace libwebrtc

@@ -27,6 +27,8 @@ class VideoFrameBufferImpl : public RTCVideoFrame {
 
   RTCVideoFrame::PixelFormat PixFormat() const override;
 
+  void* RawBuffer() const override;
+
   const uint8_t* DataY() const override;
 
   const uint8_t* DataU() const override;

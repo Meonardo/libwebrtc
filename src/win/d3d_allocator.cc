@@ -23,7 +23,6 @@ or https://software.intel.com/en-us/media-client-solutions-support.
 
 #include "msdkvideobase.h"
 
-#if defined(WEBRTC_WIN)
 #pragma warning(disable : 4068) // unknown pragma
 #pragma warning(disable : 4996) // declared deprecated
 #pragma warning(disable : 4163) // 'identifier' : not available as an intrinsic function
@@ -412,4 +411,3 @@ void D3DFrameAllocator::DeallocateMids(mfxHDLPair** pair, int n)
 }
 }
 }
-#endif // #if defined(_WIN32) || defined(_WIN64)

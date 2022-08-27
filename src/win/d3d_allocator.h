@@ -24,8 +24,6 @@ or https://software.intel.com/en-us/media-client-solutions-support.
 #ifndef OWT_BASE_WIN_D3DALLOCATOR_H__
 #define OWT_BASE_WIN_D3DALLOCATOR_H__
 
-#if defined(WEBRTC_WIN)
-
 #include <atlbase.h>
 #include <d3d9.h>
 #include <initguid.h>
@@ -90,5 +88,4 @@ protected:
 };
 }  // namespace base
 }  // namespace owt
-#endif // #if defined(WEBRTC_WIN)
 #endif // OWT_BASE_WIN_D3DALLOCATOR_H__

@@ -4,10 +4,10 @@
 
 #include "msdkvideobase.h"
 #include "mfxadapter.h"
-#include "src/win/nativehandlebuffer.h"
 #include "src/win/d3d11_allocator.h"
 #include "src/win/msdkvideodecoder.h"
 #include "api/scoped_refptr.h"
+#include <wrl.h>
 
 using namespace rtc;
 
@@ -24,6 +24,9 @@ int32_t MSDKVideoDecoder::Release() {
     delete m_pmfx_dec_;
     m_pmfx_dec_ = nullptr;
 
+    /*delete m_pmfx_vpp_;
+    m_pmfx_vpp_ = nullptr;*/
+
     if (m_mfx_session_) {
       MSDKFactory* factory = MSDKFactory::Get();
       if (factory) {
@@ -36,6 +39,7 @@ int32_t MSDKVideoDecoder::Release() {
 
     m_pmfx_allocator_.reset();
     MSDK_SAFE_DELETE_ARRAY(m_pinput_surfaces_);
+    //MSDK_SAFE_DELETE_ARRAY(m_pinput_surfaces1_);
     inited_ = false;
     return WEBRTC_VIDEO_CODEC_OK;
 }
@@ -43,7 +47,6 @@ int32_t MSDKVideoDecoder::Release() {
 MSDKVideoDecoder::MSDKVideoDecoder()
     : width_(0)
       ,height_(0)
-      //,decoder_thread_(new rtc::Thread(rtc::SocketServer::CreateDefault()))
       ,decoder_thread_(rtc::Thread::Create())
 {
   decoder_thread_->SetName("MSDKVideoDecoderThread", nullptr);
@@ -176,9 +179,7 @@ bool MSDKVideoDecoder::Configure(const Settings& settings) {
 int32_t MSDKVideoDecoder::Reset() {
   delete m_pmfx_dec_;
   m_pmfx_dec_ = nullptr;
-
   m_pmfx_dec_ = new MFXVideoDECODE(*m_mfx_session_);
-
   return WEBRTC_VIDEO_CODEC_OK;
 }
 
@@ -202,6 +203,7 @@ int32_t MSDKVideoDecoder::InitDecodeOnCodecThread() {
     }
 
     MSDK_SAFE_DELETE_ARRAY(m_pinput_surfaces_);
+    //MSDK_SAFE_DELETE_ARRAY(m_pinput_surfaces1_);
 
     if (m_pmfx_allocator_) {
       m_pmfx_allocator_->Free(m_pmfx_allocator_->pthis, &m_mfx_response_);
@@ -270,8 +272,7 @@ int32_t MSDKVideoDecoder::Decode(
   mfxStatus sts = MFX_ERR_NONE;
   mfxFrameSurface1 *pOutputSurface = nullptr;
 
-  m_pmfx_video_params_.IOPattern =
-      MFX_IOPATTERN_OUT_VIDEO_MEMORY;
+  m_pmfx_video_params_.IOPattern = MFX_IOPATTERN_OUT_VIDEO_MEMORY;
   m_pmfx_video_params_.AsyncDepth = 4;
 
   ReadFromInputStream(&m_mfx_bs_, inputImage.data(), inputImage.size());
@@ -281,11 +282,14 @@ dec_header:
     if (m_pmfx_dec_ == nullptr) {
       RTC_LOG(LS_ERROR) << "MSDK decoder not created.";
     }
+
+    mfxU16 nSurfNum = 0;
     sts = m_pmfx_dec_->DecodeHeader(&m_mfx_bs_, &m_pmfx_video_params_);
+
     if (MFX_ERR_NONE == sts || MFX_WRN_PARTIAL_ACCELERATION == sts) {
-      mfxU16 nSurfNum = 0;
       mfxFrameAllocRequest request;
       MSDK_ZERO_MEMORY(request);
+
       sts = m_pmfx_dec_->QueryIOSurf(&m_pmfx_video_params_, &request);
       if (MFX_WRN_PARTIAL_ACCELERATION == sts) {
         sts = MFX_ERR_NONE;
@@ -302,11 +306,12 @@ dec_header:
         RTC_LOG(LS_ERROR) << "Invalid num suggested.";
         return WEBRTC_VIDEO_CODEC_ERROR;
       }
-      nSurfNum = MSDK_MAX(request.NumFrameSuggested, 1);
+      nSurfNum = MSDK_MAX(request.NumFrameSuggested, nSurfNum);
 
       request.Type |= MFX_MEMTYPE_VIDEO_MEMORY_DECODER_TARGET;
       sts = m_pmfx_allocator_->Alloc(m_pmfx_allocator_->pthis, &request,
                                    &m_mfx_response_);
+
       if (MFX_ERR_NONE != sts) {
         RTC_LOG(LS_ERROR) << "Failed on allocator's alloc method";
         return WEBRTC_VIDEO_CODEC_ERROR;
@@ -356,6 +361,7 @@ dec_header:
 
   m_mfx_bs_.DataFlag = MFX_BITSTREAM_COMPLETE_FRAME;
   mfxSyncPoint syncp;
+  //mfxSyncPoint syncpV;
 
   // If we get video param changed, that means we need to continue with
   // decoding.
@@ -373,11 +379,42 @@ retry:
     m_dec_bs_offset_ = m_mfx_bs_.DataOffset;
     sts = m_pmfx_dec_->DecodeFrameAsync(&m_mfx_bs_, moreFreeSurf, &pOutputSurface,
                                       &syncp);
-
+    
     if (sts == MFX_ERR_NONE && syncp != nullptr) {
       sts = m_mfx_session_->SyncOperation(syncp, MSDK_DEC_WAIT_INTERVAL);
+
+      //if (sts == MFX_ERR_NONE) {
+      //  mfxU16 nIndex2 = DecGetFreeSurface(m_pinput_surfaces1_, nSurfNumVpp);
+
+      //  for (;;) {
+      //    // Process a frame asychronously (returns immediately)
+      //    sts = m_pmfx_vpp_->RunFrameVPPAsync(
+      //        pOutputSurface, &m_pinput_surfaces1_[nIndex2], NULL, &syncpV);
+
+      //    if (MFX_ERR_NONE < sts &&
+      //        !syncpV) {  // repeat the call if warning and no output
+      //      if (MFX_WRN_DEVICE_BUSY == sts)
+      //        MSDK_SLEEP(1);  // wait if device is busy
+      //    } else if (MFX_ERR_NONE < sts && syncpV) {
+      //      sts = MFX_ERR_NONE;  // ignore warnings if output is available
+      //      break;
+      //    } else {
+      //      break;  // not a warning
+      //    }
+      //  }
+
+      //  // VPP needs more data, let decoder decode another frame as input
+      //  if (MFX_ERR_MORE_DATA == sts) {
+      //    continue;
+      //  }
+      //}
+      //
+      //if (sts == MFX_ERR_NONE) {
+      //  sts = m_mfx_session_->SyncOperation(syncp, 60000);
+      //}
+
       if (sts >= MFX_ERR_NONE) {
-#if 0
+#if 1
         mfxMemId dxMemId = pOutputSurface->Data.MemId;
         mfxFrameInfo frame_info = pOutputSurface->Info;
         mfxHDLPair pair = {nullptr};
@@ -385,14 +422,23 @@ retry:
         // handle for locking/unlocking purpose.
         m_pmfx_allocator_->GetFrameHDL(dxMemId, (mfxHDL*)&pair);
         if (callback_) {
-          surface_handle_->d3d11_device = d3d11_device_.p;
           surface_handle_->texture =
               reinterpret_cast<ID3D11Texture2D*>(pair.first);
+          surface_handle_->d3d11_device = d3d11_device_.p;
+
           // Texture_array_index not used when decoding with MSDK.
           surface_handle_->texture_array_index = 0;
           D3D11_TEXTURE2D_DESC texture_desc;
           memset(&texture_desc, 0, sizeof(texture_desc));
           surface_handle_->texture->GetDesc(&texture_desc);
+          
+          /*ID3D11Texture2D* outTexture = ConvertD3D11Texture(
+              inTexture, frame_info.CropW, frame_info.CropH);
+          if (outTexture == nullptr) {
+            RTC_LOG(LS_ERROR) << "Failed to convert texture.";
+            return WEBRTC_VIDEO_CODEC_ERROR;
+          }
+          surface_handle_->texture = outTexture;*/
 
           // TODO(johny): we should extend the buffer structure to include
           // not only the CropW|CropH value, but also the CropX|CropY for the
@@ -406,6 +452,9 @@ retry:
           decoded_frame.set_ntp_time_ms(inputImage.ntp_time_ms_);
           decoded_frame.set_timestamp(inputImage.Timestamp());
           callback_->Decoded(decoded_frame);
+
+          /*outTexture->Release();
+          outTexture = nullptr;*/
         }
 #else
         mfxFrameData frame_data = pOutputSurface->Data;
@@ -523,6 +572,119 @@ std::unique_ptr<MSDKVideoDecoder> MSDKVideoDecoder::Create(
 const char* MSDKVideoDecoder::ImplementationName() const {
   return "IntelMediaSDK";
 }
+
+//bool MSDKVideoDecoder::CreateVideoProcessor(int width, int height, bool reset) {
+//  HRESULT hr = S_OK;
+//  if (width < 0 || height < 0)
+//    return false;
+//
+//  D3D11_VIDEO_PROCESSOR_CONTENT_DESC content_desc;
+//  ZeroMemory(&content_desc, sizeof(content_desc));
+//
+//  if (video_processor_.p && video_processor_enum_.p) {
+//    hr = video_processor_enum_->GetVideoProcessorContentDesc(&content_desc);
+//    if (FAILED(hr))
+//      return false;
+//
+//    if (content_desc.InputWidth != (unsigned int)width ||
+//        content_desc.InputHeight != (unsigned int)height || reset) {
+//      video_processor_enum_.Release();
+//      video_processor_.Release();
+//    } else {
+//      return true;
+//    }
+//  }
+//
+//  ZeroMemory(&content_desc, sizeof(content_desc));
+//  content_desc.InputFrameFormat = D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE;
+//  content_desc.InputFrameRate.Numerator = 30;
+//  content_desc.InputFrameRate.Denominator = 1;
+//  content_desc.InputWidth = width;
+//  content_desc.InputHeight = height;
+//  content_desc.OutputWidth = width;
+//  content_desc.OutputHeight = height;
+//  content_desc.OutputFrameRate.Numerator = 30;
+//  content_desc.OutputFrameRate.Denominator = 1;
+//  content_desc.Usage = D3D11_VIDEO_USAGE_OPTIMAL_SPEED;
+//
+//  hr = d3d11_video_device_->CreateVideoProcessorEnumerator(
+//      &content_desc, &video_processor_enum_);
+//  if (FAILED(hr))
+//    return false;
+//
+//  hr = d3d11_video_device_->CreateVideoProcessor(video_processor_enum_, 0,
+//                                                 &video_processor_);
+//  if (FAILED(hr))
+//    return false;
+//
+//  return true;
+//}
+//
+//ID3D11Texture2D* MSDKVideoDecoder::ConvertD3D11Texture(
+//    ID3D11Texture2D* pInTexture2D, int w, int h) {
+//  HRESULT hr = S_OK;
+//  ID3D11Texture2D* pOutTexture2D = nullptr;
+//  ID3D11VideoProcessorOutputView* output_view;
+//  ID3D11VideoProcessorInputView* input_view;
+//
+//  D3D11_TEXTURE2D_DESC desc2D;
+//  pInTexture2D->GetDesc(&desc2D);
+//  desc2D.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+//  desc2D.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+//  desc2D.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+//
+//  D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC pInDesc;
+//  ZeroMemory(&pInDesc, sizeof(pInDesc));
+//  pInDesc.FourCC = 0;
+//  pInDesc.ViewDimension = D3D11_VPIV_DIMENSION_TEXTURE2D;
+//  pInDesc.Texture2D.MipSlice = 0;
+//  pInDesc.Texture2D.ArraySlice = 0;
+//
+//  hr = d3d11_video_device_->CreateVideoProcessorInputView(
+//      pInTexture2D, video_processor_enum_, &pInDesc, &input_view);
+//  if (FAILED(hr))
+//    return nullptr;
+//
+//  hr = d3d11_device_->CreateTexture2D(&desc2D, NULL, &pOutTexture2D);
+//  if (FAILED(hr))
+//    return nullptr;
+//
+//  D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC pOutDesc;
+//  ZeroMemory(&pOutDesc, sizeof(pOutDesc));
+//  pOutDesc.ViewDimension = D3D11_VPOV_DIMENSION_TEXTURE2D;
+//  pOutDesc.Texture2D.MipSlice = 0;
+//
+//  hr = d3d11_video_device_->CreateVideoProcessorOutputView(
+//      pOutTexture2D, video_processor_enum_, &pOutDesc, &output_view);
+//  if (FAILED(hr))
+//    return nullptr;
+//
+//  D3D11_VIDEO_PROCESSOR_STREAM StreamData;
+//  ZeroMemory(&StreamData, sizeof(StreamData));
+//  StreamData.Enable = TRUE;
+//  StreamData.OutputIndex = 0;
+//  StreamData.InputFrameOrField = 0;
+//  StreamData.PastFrames = 0;
+//  StreamData.FutureFrames = 0;
+//  StreamData.ppPastSurfaces = NULL;
+//  StreamData.ppFutureSurfaces = NULL;
+//  StreamData.pInputSurface = input_view;
+//  StreamData.ppPastSurfacesRight = NULL;
+//  StreamData.ppFutureSurfacesRight = NULL;
+//
+//  hr = d3d11_video_context_->VideoProcessorBlt(video_processor_, output_view,
+//                                               0, 1, &StreamData);
+//  if (FAILED(hr))
+//    return nullptr;
+//
+//  input_view->Release();
+//  input_view = nullptr;
+//  output_view->Release();
+//  output_view = nullptr;
+//
+//  return pOutTexture2D;
+//}
+
 
 }  // namespace base
 }  // namespace owt

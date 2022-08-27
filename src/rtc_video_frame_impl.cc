@@ -31,15 +31,16 @@ scoped_refptr<RTCVideoFrame> VideoFrameBufferImpl::Copy() {
 //  return buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative;
 //}
 //
-//void* VideoFrameBufferImpl::RawBuffer() const {
-//  owt::base::NativeHandleBuffer* buffer =
-//      reinterpret_cast<owt::base::NativeHandleBuffer*>(buffer_.get());
-//  return buffer->native_handle();
-//}
+
+void* VideoFrameBufferImpl::RawBuffer() const {
+  return buffer_.get();
+}
 
 RTCVideoFrame::PixelFormat VideoFrameBufferImpl::PixFormat() const {
   if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12)
     return RTCVideoFrame::PixelFormat::kNV12;
+  else if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative) 
+    return RTCVideoFrame::PixelFormat::kNative;
   return RTCVideoFrame::PixelFormat::kYV12;
 }
 

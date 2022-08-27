@@ -10,6 +10,7 @@
 #include "rtc_mediaconstraints.h"
 #include "rtc_video_device.h"
 #include "rtc_video_source.h"
+#include "rtc_video_renderer.h"
 
 namespace libwebrtc {
 
@@ -64,6 +65,8 @@ class RTCPeerConnectionFactory : public RefCountInterface {
 
   virtual scoped_refptr<RTCMediaStream> CreateStream(
       const string stream_id) = 0;
+
+  virtual RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>* CreateVideoD3D11Renderer(HWND hwnd) = 0;
 };
 
 }  // namespace libwebrtc

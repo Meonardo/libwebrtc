@@ -9,7 +9,7 @@ class RTCVideoFrame : public RefCountInterface {
  public:
   enum class Type { kARGB, kBGRA, kABGR, kRGBA };
 
-  enum class PixelFormat { kYV12, kNV12 };
+  enum class PixelFormat { kYV12 = 0, kNV12, kNative = 99 };
 
   enum VideoRotation {
     kVideoRotation_0 = 0,
@@ -42,6 +42,8 @@ class RTCVideoFrame : public RefCountInterface {
   virtual int height() const = 0;
 
   virtual VideoRotation rotation() = 0;
+
+  virtual void* RawBuffer() const = 0;
 
   // Returns pointer to the pixel data for a given plane. The memory is owned by
   // the VideoFrameBuffer object and must not be freed by the caller.

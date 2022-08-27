@@ -11,9 +11,20 @@
 #include "rtc_base/checks.h"
 #include "api/scoped_refptr.h"
 
+#include <d3d11.h>
+
 namespace owt {
 namespace base {
 using namespace webrtc;
+
+#if defined(WEBRTC_WIN)
+struct D3D11ImageHandle {
+  ID3D11Device* d3d11_device;
+  ID3D11Texture2D* texture;  // The DX texture or texture array.
+  int texture_array_index;  // When >=0, indicate the index within texture array
+};
+#endif
+
 class NativeHandleBuffer : public VideoFrameBuffer{
  public:
    NativeHandleBuffer(void* native_handle, int width, int height)
