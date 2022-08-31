@@ -14,6 +14,8 @@ class LibWebRTC {
   CreateRTCPeerConnectionFactory();
 
   LIB_WEBRTC_API static void Terminate();
+
+  LIB_WEBRTC_API static void UpdateRTCLogLevel(int level);
 };
 
 }  // namespace libwebrtc
