@@ -220,6 +220,8 @@ int32_t MSDKVideoDecoder::InitDecodeOnCodecThread() {
       codec_id = MFX_CODEC_VP9;
     } else if (settings_.codec_type() == webrtc::kVideoCodecAV1) {
       codec_id = MFX_CODEC_AV1;
+    } else if (settings_.codec_type() == webrtc::kVideoCodecH265) {
+      codec_id = MFX_CODEC_HEVC;
     }
 
     //if (!factory->LoadDecoderPlugin(codec_id, m_mfx_session_, &m_plugin_id_)) {

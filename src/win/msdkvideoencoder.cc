@@ -12,6 +12,7 @@
 #include "src/win/msdkvideobase.h"
 #include "src/win/msdkvideoencoder.h"
 #include "common_video/h264/h264_common.h"
+#include "common_video/h265/h265_common.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/system/file_wrapper.h"
 #include "rtc_base/logging.h"
@@ -145,11 +146,33 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
     case webrtc::kVideoCodecH264:
       codec_id = MFX_CODEC_AVC;
       break;
+    case webrtc::kVideoCodecH265:
+      codec_id = MFX_CODEC_HEVC;
+      break;
+    case webrtc::kVideoCodecVP9:
+      codec_id = MFX_CODEC_VP9;
+      break;
+    case webrtc::kVideoCodecAV1:
+      codec_id = MFX_CODEC_AV1;
+      break;
     default:
       RTC_LOG(LS_ERROR) << "Invalid codec specified.";
       return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
   }
 
+  // Parse the profile used here. With MSDK we use auto levels, but
+  // later we should switch to use the level specified in SDP.
+  if (codec_id == MFX_CODEC_HEVC) {
+    h265_profile_ =
+        MediaUtils::ParseSdpForH265Profile(rtp_codec_parameters_.params)
+            .value_or(owt::base::H265ProfileId::kMain);
+  }
+#if (MFX_VERSION >= MFX_VERSION_NEXT)
+  else if (codec_id == MFX_CODEC_AV1) {
+    av1_profile_ = MediaUtils::ParseSdpForAV1Profile(rtp_codec_parameters.params)
+                      .value_or(owt::base::AV1Profile::kMain);
+  }
+#endif
 
   // If already inited, what we need to do is to reset the encoder,
   // instead of setting it all over again.
@@ -191,6 +214,28 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
   m_enc_ext_params_.clear();
   m_mfx_enc_params_.mfx.CodecId = codec_id;
 
+  if (codec_id == MFX_CODEC_HEVC) {
+    m_mfx_enc_params_.mfx.CodecProfile = (h265_profile_ == 
+                                            owt::base::H265ProfileId::kMain)
+                                          ? MFX_PROFILE_HEVC_MAIN
+                                          : MFX_PROFILE_HEVC_MAIN10;
+  }
+#if (MFX_VERSION >= MFX_VERSION_NEXT) 
+  else if (codec_id == MFX_CODEC_AV1) {
+    switch (av1_profile_) {
+      // We will not support professional profile.
+      case owt::base::AV1Profile::kMain:
+        m_mfx_enc_params_.mfx.CodecProfile = MFX_PROFILE_AV1_MAIN;
+        break;
+      case owt::base::AV1Profile::kHigh:
+        m_mfx_enc_params_.mfx.CodecProfile = MFX_PROFILE_AV1_HIGH;
+        break;
+      default:
+        m_mfx_enc_params_.mfx.CodecProfile = MFX_PROFILE_AV1_MAIN;
+    }
+  }
+#endif
+
   m_mfx_enc_params_.mfx.TargetUsage = MFX_TARGETUSAGE_BALANCED;
   m_mfx_enc_params_.mfx.RateControlMethod = MFX_RATECONTROL_CQP;
   m_mfx_enc_params_.mfx.QPI = 31;
@@ -204,6 +249,19 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
 
   // Frame info parameters
   m_mfx_enc_params_.mfx.FrameInfo.FourCC = MFX_FOURCC_NV12;
+  if (
+      (codec_id ==
+           MFX_CODEC_HEVC && h265_profile_ == owt::base::H265ProfileId::kMain10)
+#if (MFX_VERSION >= MFX_VERSION_NEXT)
+      // Currently for High we use 10-bit. RTP spec for AV1 does not clearly
+      // define the max-bpp setting. Need to re-visit this for AV1 RTP spec 1.0.
+      ||
+      (codec_id == MFX_CODEC_AV1 && av1_profile_ == owt::base::AV1Profile::kHigh)
+#endif
+  ) {
+    m_mfx_enc_params_.mfx.FrameInfo.FourCC = MFX_FOURCC_P010;
+  }
+  
   m_mfx_enc_params_.mfx.FrameInfo.Shift = 0;
 
   // WebRTC will not request for Y410 & Y416 at present for VP9/AV1/HEVC.
@@ -267,6 +325,22 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
   if (codec_id != MFX_CODEC_VP9)
     m_enc_ext_params_.push_back((mfxExtBuffer*)&extendedCodingOptions3);
 #endif
+
+  if (codec_id == MFX_CODEC_HEVC) {
+    MSDK_ZERO_MEMORY(m_ext_hevc_param_);
+    // If the crop width/height is 8-bit aligned but not 16-bit aligned,
+    // add extended param to boost the performance.
+    m_ext_hevc_param_.Header.BufferId = MFX_EXTBUFF_HEVC_PARAM;
+    m_ext_hevc_param_.Header.BufferSz = sizeof(m_ext_hevc_param_);
+
+    if ((!((m_mfx_enc_params_.mfx.FrameInfo.CropW & 15) ^ 8) ||
+         !((m_mfx_enc_params_.mfx.FrameInfo.CropH & 15) ^ 8))) {
+      m_ext_hevc_param_.PicWidthInLumaSamples = m_mfx_enc_params_.mfx.FrameInfo.CropW;
+      m_ext_hevc_param_.PicHeightInLumaSamples =
+          m_mfx_enc_params_.mfx.FrameInfo.CropH;
+      m_enc_ext_params_.push_back((mfxExtBuffer*)&m_ext_hevc_param_);
+    }
+  }
 
   num_temporal_layers_ =
       std::min(static_cast<int>(

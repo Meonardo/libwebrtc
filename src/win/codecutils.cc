@@ -33,6 +33,19 @@ std::vector<webrtc::SdpVideoFormat> CodecUtils::SupportedH264Codecs() {
                        "0")};
 }  
 
+std::vector<webrtc::SdpVideoFormat> CodecUtils::GetSupportedH265Codecs() {
+  return {webrtc::SdpVideoFormat(cricket::kH265CodecName,
+                                 {{cricket::kH265FmtpProfileSpace, "0"},
+                                  {cricket::kH265FmtpProfileId, "1"},
+                                  {cricket::kH265FmtpTierFlag, "0"},
+                                  {cricket::kH265FmtpLevelId, "120"}}),
+          webrtc::SdpVideoFormat(cricket::kH265CodecName,
+                                 {{cricket::kH265FmtpProfileSpace, "0"},
+                                  {cricket::kH265FmtpProfileId, "2"},
+                                  {cricket::kH265FmtpTierFlag, "0"},
+                                  {cricket::kH265FmtpLevelId, "120"}})};
+}
+
 webrtc::VideoCodecType CodecUtils::ConvertSdpFormatToCodecType(webrtc::SdpVideoFormat format){
   if (absl::EqualsIgnoreCase(format.name, cricket::kVp8CodecName)) {
     return webrtc::kVideoCodecVP8;
@@ -40,7 +53,8 @@ webrtc::VideoCodecType CodecUtils::ConvertSdpFormatToCodecType(webrtc::SdpVideoF
     return webrtc::kVideoCodecVP9;
   } else if (absl::EqualsIgnoreCase(format.name, cricket::kH264CodecName)) {
     return webrtc::kVideoCodecH264;
-
+  } else if (absl::EqualsIgnoreCase(format.name, cricket::kH265CodecName)) {
+    return webrtc::kVideoCodecH265;
   } else if (absl::EqualsIgnoreCase(format.name, cricket::kAv1CodecName)) {
     return webrtc::kVideoCodecAV1;
   }

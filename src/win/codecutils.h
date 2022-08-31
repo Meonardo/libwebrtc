@@ -14,6 +14,7 @@ namespace base {
 class CodecUtils {
  public:
   static std::vector<webrtc::SdpVideoFormat> SupportedH264Codecs();
+  static std::vector<webrtc::SdpVideoFormat> GetSupportedH265Codecs();
   static webrtc::VideoCodecType ConvertSdpFormatToCodecType(webrtc::SdpVideoFormat format);
 };
 }

@@ -18,6 +18,7 @@
 #include "api/video_codecs/video_codec.h"
 #include "api/video_codecs/video_encoder.h"
 #include "media/base/codec.h"
+//#include "media/base/vp9_profile.h"
 #include "modules/video_coding/codecs/h264/include/h264.h"
 #include "rtc_base/thread.h"
 
@@ -79,9 +80,18 @@ class MSDKVideoEncoder : public webrtc::VideoEncoder {
   mfxVideoParam m_mfx_enc_params_;
 
 
+  // Members used by HEVC
+  mfxExtHEVCParam m_ext_hevc_param_;
+  // H265Profile space is always 0.
+  H265ProfileId h265_profile_ = owt::base::H265ProfileId::kMain; 
 
-
-
+  // // Members used by VP9
+  // mfxExtVP9Param vp9_ext_param_;
+  // webrtc::VP9Profile vp9_profile_ = webrtc::VP9Profile::kProfile0;
+  // std::unique_ptr<VP9RateControl> vp9_rate_ctrl_;
+  // libvpx::VP9RateControlRtcConfig vp9_rc_config_;
+  // libvpx::VP9FrameParamsQpRTC frame_params_;
+  // bool vp9_use_external_brc_ = false;
 
   // TODO(johny): MSDK will remove the version macro usage for headers.
   // Turn this on when appropriate.

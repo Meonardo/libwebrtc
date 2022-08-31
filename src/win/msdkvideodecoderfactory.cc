@@ -22,10 +22,11 @@ MSDKVideoDecoderFactory::MSDKVideoDecoderFactory() {
   supported_codec_types_.clear();
 
   bool is_vp8_hw_supported = false, is_vp9_hw_supported = false;
-  bool is_h264_hw_supported = false, is_av1_hw_supported = false;
+  bool is_h264_hw_supported = false, is_h265_hw_supported = true, is_av1_hw_supported = false;
   MediaCapabilities* media_capability = MediaCapabilities::Get();
   std::vector<owt::base::VideoCodec> codecs_to_check;
   codecs_to_check.push_back(owt::base::VideoCodec::kH264);
+  codecs_to_check.push_back(owt::base::VideoCodec::kH265);
   codecs_to_check.push_back(owt::base::VideoCodec::kVp9);
   codecs_to_check.push_back(owt::base::VideoCodec::kAv1);
   codecs_to_check.push_back(owt::base::VideoCodec::kVp8);
@@ -45,6 +46,9 @@ MSDKVideoDecoderFactory::MSDKVideoDecoderFactory() {
     } else if (capability.codec_type == owt::base::VideoCodec::kAv1 && !is_av1_hw_supported) {
       is_av1_hw_supported = true;
       supported_codec_types_.push_back(webrtc::kVideoCodecAV1);
+    } else if (capability.codec_type == owt::base::VideoCodec::kH265 && !is_h265_hw_supported) {
+      is_h265_hw_supported = true;
+      supported_codec_types_.push_back(webrtc::kVideoCodecH265);
     }
   }
 }
@@ -53,12 +57,14 @@ MSDKVideoDecoderFactory::~MSDKVideoDecoderFactory() {}
 
 std::unique_ptr<webrtc::VideoDecoder> MSDKVideoDecoderFactory::CreateVideoDecoder(
     const webrtc::SdpVideoFormat& format) {
-  bool vp9_hw = false, vp8_hw = false, av1_hw = false, h264_hw = false;
+  bool vp9_hw = false, vp8_hw = false, av1_hw = false, h264_hw = false, h265_hw = false;
   for (auto& codec : supported_codec_types_) {
     if (codec == webrtc::kVideoCodecAV1)
       av1_hw = false;
     else if (codec == webrtc::kVideoCodecH264)
       h264_hw = true;
+    else if (codec == webrtc::kVideoCodecH265)
+      h265_hw = true;
     else if (codec == webrtc::kVideoCodecVP8)
       vp8_hw = false;
     else if (codec == webrtc::kVideoCodecVP9)
@@ -75,7 +81,10 @@ std::unique_ptr<webrtc::VideoDecoder> MSDKVideoDecoderFactory::CreateVideoDecode
   } else if (absl::EqualsIgnoreCase(format.name, cricket::kAv1CodecName) &&
              !av1_hw) {
     return webrtc::CreateLibaomAv1Decoder();
-  } 
+  } else if (absl::EqualsIgnoreCase(format.name, cricket::kH265CodecName) && !h265_hw) {
+    // This should not happen. We do not return here but preceed with HW decoder.
+    RTC_LOG(LS_ERROR) << "Returning null hevc encoder.";
+  }
 
   return MSDKVideoDecoder::Create(cricket::VideoCodec(format));
 }
@@ -90,6 +99,9 @@ std::unique_ptr<webrtc::VideoDecoder> MSDKVideoDecoderFactory::CreateVideoDecode
     supported_codecs.push_back(format);
   if (webrtc::kIsLibaomAv1DecoderSupported) {
     supported_codecs.push_back(webrtc::SdpVideoFormat(cricket::kAv1CodecName));
+  }
+  for (const webrtc::SdpVideoFormat& format : CodecUtils::GetSupportedH265Codecs()) {
+    supported_codecs.push_back(format);
   }
   return supported_codecs;
 }

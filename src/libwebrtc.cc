@@ -3,6 +3,7 @@
 #include "api/scoped_refptr.h"
 #include "rtc_base/ssl_adapter.h"
 #include "rtc_base/thread.h"
+#include "rtc_base/logging.h"
 
 #include "rtc_peerconnection_factory_impl.h"
 
@@ -70,6 +71,27 @@ LibWebRTC::CreateRTCPeerConnectionFactory() {
               network_thread.get()));
   rtc_peerconnection_factory->Initialize();
   return rtc_peerconnection_factory;
+}
+
+// #include "rtc_base/logging.h"
+// The meanings of the levels are:
+//  LS_VERBOSE: This level is for data which we do not want to appear in the
+//   normal debug log, but should appear in diagnostic logs.
+//  LS_INFO: Chatty level used in debugging for all sorts of things, the default
+//   in debug builds.
+//  LS_WARNING: Something that may warrant investigation.
+//  LS_ERROR: Something that should not have occurred.
+//  LS_NONE: Don't log.
+//enum LoggingSeverity {
+//  LS_VERBOSE,
+//  LS_INFO,
+//  LS_WARNING,
+//  LS_ERROR,
+//  LS_NONE,
+//};
+
+void LibWebRTC::UpdateRTCLogLevel(int level) {
+  rtc::LogMessage::LogToDebug((rtc::LoggingSeverity)level);
 }
 
 }  // namespace libwebrtc

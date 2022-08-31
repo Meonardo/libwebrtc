@@ -22,6 +22,7 @@ MSDKVideoEncoderFactory::MSDKVideoEncoderFactory() {
   MediaCapabilities* media_capability = MediaCapabilities::Get();
   std::vector<owt::base::VideoCodec> codecs_to_check;
   codecs_to_check.push_back(owt::base::VideoCodec::kH264);
+  codecs_to_check.push_back(owt::base::VideoCodec::kH265);
 #if 0
   codecs_to_check.push_back(owt::base::VideoCodec::kVp9);
   codecs_to_check.push_back(owt::base::VideoCodec::kAv1);
@@ -32,6 +33,7 @@ MSDKVideoEncoderFactory::MSDKVideoEncoderFactory() {
       media_capability->SupportedCapabilitiesForVideoEncoder(codecs_to_check);
   // TODO(jianlin): use the check result from MSDK.
   supported_codec_types_.push_back(webrtc::kVideoCodecH264);
+  supported_codec_types_.push_back(webrtc::kVideoCodecH265);
   supported_codec_types_.push_back(webrtc::kVideoCodecVP8);
   supported_codec_types_.push_back(webrtc::kVideoCodecVP9);
   supported_codec_types_.push_back(webrtc::kVideoCodecAV1);
@@ -41,6 +43,7 @@ MSDKVideoEncoderFactory::MSDKVideoEncoderFactory() {
 std::unique_ptr<webrtc::VideoEncoder> MSDKVideoEncoderFactory::CreateVideoEncoder(
     const webrtc::SdpVideoFormat& format) {
   bool vp9_hw = false, vp8_hw = false, av1_hw = false, h264_hw = false;
+  bool h265_hw = false;
   for (auto& codec : supported_codec_types_) {
     if (codec == webrtc::kVideoCodecAV1)
       av1_hw = false;
@@ -50,6 +53,8 @@ std::unique_ptr<webrtc::VideoEncoder> MSDKVideoEncoderFactory::CreateVideoEncode
       vp8_hw = false;
     else if (codec == webrtc::kVideoCodecVP9)
       vp9_hw = false;
+    else if (codec == webrtc::kVideoCodecH265)
+      h265_hw = true;
   }
   // VP8 encoding will always use SW impl.
   if (absl::EqualsIgnoreCase(format.name, cricket::kVp8CodecName) && !vp8_hw)
@@ -77,7 +82,10 @@ MSDKVideoEncoderFactory::GetSupportedFormats() const {
   if (webrtc::kIsLibaomAv1EncoderSupported) {
     supported_codecs.push_back(webrtc::SdpVideoFormat(cricket::kAv1CodecName));
   }
-
+  for (const webrtc::SdpVideoFormat& format : CodecUtils::GetSupportedH265Codecs()) {
+    supported_codecs.push_back(format);
+  }
+  
   return supported_codecs;
 }
 
