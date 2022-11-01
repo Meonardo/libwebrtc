@@ -13,6 +13,8 @@
 #include "api/media_stream_interface.h"
 #include "api/peer_connection_interface.h"
 #include "api/task_queue/task_queue_factory.h"
+#include "modules/audio_device/win/audio_device_core_win.h"
+
 #include "rtc_base/thread.h"
 
 namespace libwebrtc {
@@ -101,6 +103,7 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
 #endif
   std::list<scoped_refptr<RTCPeerConnection>> peerconnections_;
   std::unique_ptr<webrtc::TaskQueueFactory> task_queue_factory_;
+  std::unique_ptr<webrtc::ScopedCOMInitializer> com_initializer_;
 };
 
 }  // namespace libwebrtc

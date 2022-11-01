@@ -3,10 +3,14 @@
 
 #include "rtc_media_track.h"
 #include "rtc_types.h"
+#include "rtc_audio_source.h"
 
 namespace libwebrtc {
 
 class RTCAudioTrack : public RTCMediaTrack {
+ public:
+  virtual scoped_refptr<RTCAudioSource> Source() = 0;
+
  protected:
   virtual ~RTCAudioTrack() {}
 };

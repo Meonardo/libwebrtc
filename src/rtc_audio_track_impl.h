@@ -2,6 +2,7 @@
 #define LIB_WEBRTC_AUDIO_TRACK_IMPL_HXX
 
 #include "rtc_audio_track.h"
+#include "rtc_audio_source_impl.h"
 
 #include "api/media_stream_interface.h"
 #include "api/peer_connection_interface.h"
@@ -31,6 +32,15 @@ class AudioTrackImpl : public RTCAudioTrack {
     return rtc_track_->set_enabled(enable);
   }
 
+  virtual scoped_refptr<RTCAudioSource> Source() override {
+    if (source_ == nullptr) {
+      rtc::scoped_refptr<webrtc::AudioSourceInterface> native_source(
+          rtc_track_->GetSource());
+      source_ = new RefCountedObject<RTCAudioSourceImpl>(native_source);
+    }
+    return source_;
+  }
+
   rtc::scoped_refptr<webrtc::AudioTrackInterface> rtc_track() {
     return rtc_track_;
   }
@@ -41,6 +51,7 @@ class AudioTrackImpl : public RTCAudioTrack {
 
  private:
   rtc::scoped_refptr<webrtc::AudioTrackInterface> rtc_track_;
+  scoped_refptr<RTCAudioSource> source_;
   string id_, kind_;
 };
 

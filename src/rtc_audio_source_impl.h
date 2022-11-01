@@ -22,6 +22,11 @@ class RTCAudioSourceImpl : public RTCAudioSource {
 
   virtual ~RTCAudioSourceImpl();
 
+  virtual void SetVolume(double volume) override {
+    auto audio_source = rtc_audio_source();
+    audio_source->SetVolume(volume);
+  }
+
   rtc::scoped_refptr<webrtc::AudioSourceInterface> rtc_audio_source() {
     return rtc_audio_source_;
   }

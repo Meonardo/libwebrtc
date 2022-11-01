@@ -12,7 +12,9 @@
 #include "api/media_stream_interface.h"
 #include "api/video_codecs/builtin_video_decoder_factory.h"
 #include "api/video_codecs/builtin_video_encoder_factory.h"
-#include "modules/audio_device/audio_device_impl.h"
+//#include "modules/audio_device/audio_device_impl.h"
+
+#include "modules/audio_device/include/audio_device_factory.h"
 
 #include "src/win/mediacapabilities.h"
 #include "src/win/msdkvideodecoderfactory.h"
@@ -72,8 +74,7 @@ bool RTCPeerConnectionFactoryImpl::Initialize() {
           audio_device_module_.get(),
           webrtc::CreateBuiltinAudioEncoderFactory(),
           webrtc::CreateBuiltinAudioDecoderFactory(),
-          CreateIntelVideoEncoderFactory(),
-          CreateIntelVideoDecoderFactory(),
+          CreateIntelVideoEncoderFactory(), CreateIntelVideoDecoderFactory(),
           nullptr, nullptr);
     } else {
       rtc_peerconnection_factory_ = webrtc::CreatePeerConnectionFactory(
@@ -82,8 +83,7 @@ bool RTCPeerConnectionFactoryImpl::Initialize() {
           webrtc::CreateBuiltinAudioEncoderFactory(),
           webrtc::CreateBuiltinAudioDecoderFactory(),
           webrtc::CreateBuiltinVideoEncoderFactory(),
-          webrtc::CreateBuiltinVideoDecoderFactory(),
-          nullptr, nullptr);
+          webrtc::CreateBuiltinVideoDecoderFactory(), nullptr, nullptr);
     }
   }
 
@@ -110,10 +110,14 @@ bool RTCPeerConnectionFactoryImpl::Terminate() {
 }
 
 void RTCPeerConnectionFactoryImpl::CreateAudioDeviceModule_w() {
-  if (!audio_device_module_)
-    audio_device_module_ = webrtc::AudioDeviceModule::Create(
-        webrtc::AudioDeviceModule::kPlatformDefaultAudio,
-        task_queue_factory_.get());
+  if (!audio_device_module_) {
+    com_initializer_ = std::make_unique<webrtc::ScopedCOMInitializer>(
+        webrtc::ScopedCOMInitializer::kMTA);
+    if (com_initializer_->Succeeded()) {
+      audio_device_module_ = webrtc::CreateWindowsCoreAudioAudioDeviceModule(
+          task_queue_factory_.get());
+    }
+  }
 }
 
 void RTCPeerConnectionFactoryImpl::DestroyAudioDeviceModule_w() {
@@ -150,8 +154,9 @@ scoped_refptr<RTCAudioDevice> RTCPeerConnectionFactoryImpl::GetAudioDevice() {
   }
 
   if (!audio_device_impl_)
-    audio_device_impl_ = scoped_refptr<AudioDeviceImpl>(
-        new RefCountedObject<AudioDeviceImpl>(audio_device_module_,worker_thread_));
+    audio_device_impl_ =
+        scoped_refptr<AudioDeviceImpl>(new RefCountedObject<AudioDeviceImpl>(
+            audio_device_module_, worker_thread_));
 
   return audio_device_impl_;
 }
@@ -174,7 +179,7 @@ scoped_refptr<RTCAudioSource> RTCPeerConnectionFactoryImpl::CreateAudioSource(
       new RefCountedObject<RTCAudioSourceImpl>(rtc_source_track));
   return source;
 }
-#ifdef RTC_DESKTOP_DEVICE   
+#ifdef RTC_DESKTOP_DEVICE
 scoped_refptr<RTCDesktopDevice>
 RTCPeerConnectionFactoryImpl::GetDesktopDevice() {
   if (!desktop_device_impl_) {
@@ -219,7 +224,7 @@ scoped_refptr<RTCVideoSource> RTCPeerConnectionFactoryImpl::CreateVideoSource_s(
   return source;
 }
 
-#ifdef RTC_DESKTOP_DEVICE   
+#ifdef RTC_DESKTOP_DEVICE
 scoped_refptr<RTCVideoSource> RTCPeerConnectionFactoryImpl::CreateDesktopSource(
     scoped_refptr<RTCDesktopCapturer> capturer,
     const string video_source_label,
@@ -243,7 +248,6 @@ scoped_refptr<RTCVideoSource> RTCPeerConnectionFactoryImpl::CreateVideoSource_d(
     scoped_refptr<RTCDesktopCapturer> capturer,
     const char* video_source_label,
     scoped_refptr<RTCMediaConstraints> constraints) {
-  
   RTCDesktopCapturerImpl* capturer_impl =
       static_cast<RTCDesktopCapturerImpl*>(capturer.get());
 

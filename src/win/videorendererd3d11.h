@@ -5,9 +5,9 @@
 #ifndef OWT_BASE_WIN_VIDEORENDERERD3D11_H
 #define OWT_BASE_WIN_VIDEORENDERERD3D11_H
 
-#include <windows.h>
 #include <atlbase.h>
 #include <combaseapi.h>
+#include <windows.h>
 
 #include <d3d11.h>
 #include <d3d11_1.h>
@@ -30,8 +30,8 @@
 #include "rtc_base/synchronization/mutex.h"
 #include "system_wrappers/include/clock.h"
 
-#include "src/win/commontypes.h"
 #include "base/refcount.h"
+#include "commontypes.h"
 
 enum ScalingMode : int {
   SCALING_MODE_DEFAULT = 0,     // Default
@@ -105,17 +105,17 @@ typedef struct _VPE_CPU_GPU_COPY_PARAM {
 namespace owt {
 namespace base {
 
-//class VideoFrameSizeChangeObserver;
+// class VideoFrameSizeChangeObserver;
 
 class WebrtcVideoRendererD3D11Impl : public libwebrtc::RefCountInterface {
  public:
   WebrtcVideoRendererD3D11Impl(HWND wnd);
-  //virtual void OnFrame(const webrtc::VideoFrame& frame) override;
+  // virtual void OnFrame(const webrtc::VideoFrame& frame) override;
   void OnFrame(webrtc::VideoFrameBuffer* buffer);
   virtual ~WebrtcVideoRendererD3D11Impl();
 
   Resolution GetFrameSize() const;
-  //void AddVideoFrameChangeObserver(VideoFrameSizeChangeObserver* o);
+  // void AddVideoFrameChangeObserver(VideoFrameSizeChangeObserver* o);
 
  private:
   bool InitMPO(int width, int height);
@@ -137,7 +137,7 @@ class WebrtcVideoRendererD3D11Impl : public libwebrtc::RefCountInterface {
 
   unsigned long frame_width_ = 0;
   unsigned long frame_height_ = 0;
-  //VideoFrameSizeChangeObserver* frame_observer_; 
+  // VideoFrameSizeChangeObserver* frame_observer_;
 
   // D3D11 objects
   ID3D10Multithread* p_mt = nullptr;
@@ -146,7 +146,7 @@ class WebrtcVideoRendererD3D11Impl : public libwebrtc::RefCountInterface {
   ID3D11VideoDevice* d3d11_video_device_ = nullptr;
   ID3D11DeviceContext* d3d11_device_context_ = nullptr;
   ID3D11VideoContext* d3d11_video_context_ = nullptr;
-  //ID3D11DeviceContext1* dx11_device_context1_ = nullptr;
+  // ID3D11DeviceContext1* dx11_device_context1_ = nullptr;
 
   CComPtr<IDXGIFactory2> dxgi_factory_;
   CComPtr<IDXGISwapChain1> swap_chain_for_hwnd_;

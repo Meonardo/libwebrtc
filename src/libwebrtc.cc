@@ -1,9 +1,9 @@
 #include "libwebrtc.h"
 
 #include "api/scoped_refptr.h"
+#include "rtc_base/logging.h"
 #include "rtc_base/ssl_adapter.h"
 #include "rtc_base/thread.h"
-#include "rtc_base/logging.h"
 
 #include "rtc_peerconnection_factory_impl.h"
 
@@ -82,7 +82,7 @@ LibWebRTC::CreateRTCPeerConnectionFactory() {
 //  LS_WARNING: Something that may warrant investigation.
 //  LS_ERROR: Something that should not have occurred.
 //  LS_NONE: Don't log.
-//enum LoggingSeverity {
+// enum LoggingSeverity {
 //  LS_VERBOSE,
 //  LS_INFO,
 //  LS_WARNING,
@@ -92,6 +92,23 @@ LibWebRTC::CreateRTCPeerConnectionFactory() {
 
 void LibWebRTC::UpdateRTCLogLevel(int level) {
   rtc::LogMessage::LogToDebug((rtc::LoggingSeverity)level);
+}
+
+void LibWebRTC::ExecuteFuncOnWorkerThread(void (*func)(void*), void* args) {
+  worker_thread->Invoke<void>(RTC_FROM_HERE, [&]() { func(args); });
+}
+
+void LibWebRTC::ExecuteFuncOnSignalingThread(void (*func)(void*), void* args) {
+  signaling_thread->Invoke<void>(RTC_FROM_HERE, [&]() { func(args); });
+}
+
+void LibWebRTC::AsyncExecuteFuncOnWorkerThread(void (*func)(void*), void* args) {
+  worker_thread->PostTask(RTC_FROM_HERE, [&]() { func(args); });
+}
+
+void LibWebRTC::AsyncExecuteFuncOnSignalingThread(void (*func)(void*),
+                                                  void* args) {
+  signaling_thread->PostTask(RTC_FROM_HERE, [&]() { func(args); });
 }
 
 }  // namespace libwebrtc

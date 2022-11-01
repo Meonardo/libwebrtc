@@ -6,6 +6,9 @@
 namespace libwebrtc {
 
 class RTCAudioSource : public RefCountInterface {
+ public:
+  virtual void SetVolume(double v) = 0;
+
  protected:
   virtual ~RTCAudioSource() {}
 };

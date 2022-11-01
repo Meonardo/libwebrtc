@@ -7,6 +7,19 @@ namespace libwebrtc {
 
 class RTCAudioDevice : public RefCountInterface {
  public:
+  enum EventType {
+    kUnknown = 0,
+    kAdded,
+    kRemoved,
+    kDefaultChanged,
+    kStateChanged
+  };
+  enum DeviceType { kUndefined = 0, kCapture, kPlayout };
+  typedef fixed_size_function<
+      void(EventType e, DeviceType t, const char* device_id)>
+      OnDeviceChangeCallback;
+
+ public:
   static const int kAdmMaxDeviceNameSize = 128;
   static const int kAdmMaxFileNameSize = 512;
   static const int kAdmMaxGuidSize = 128;
@@ -29,6 +42,11 @@ class RTCAudioDevice : public RefCountInterface {
   virtual int32_t SetPlayoutDevice(uint16_t index) = 0;
 
   virtual int32_t SetRecordingDevice(uint16_t index) = 0;
+
+  // Device change callback
+  virtual int32_t OnDeviceChange(OnDeviceChangeCallback listener) = 0;
+
+  virtual int RestartPlayoutDevice() = 0;
 
  protected:
   virtual ~RTCAudioDevice() {}
