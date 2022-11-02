@@ -607,7 +607,7 @@ void RTCPeerConnectionImpl::RestartIce() {
 }
 
 void RTCPeerConnectionImpl::Close() {
-  RTC_LOG(INFO) << __FUNCTION__;
+  RTC_LOG(INFO) << __FUNCTION__ << " begin";
   if (rtc_peerconnection_.get()) {
     rtc_peerconnection_ = nullptr;
     data_channel_ = nullptr;
@@ -627,6 +627,8 @@ void RTCPeerConnectionImpl::Close() {
     }
     remote_streams_.clear();
   }
+
+  RTC_LOG(INFO) << __FUNCTION__ << " end.";
 }
 
 int RTCPeerConnectionImpl::AddStream(scoped_refptr<RTCMediaStream> stream) {

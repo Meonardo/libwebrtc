@@ -135,7 +135,7 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
     int number_of_cores,
     size_t max_payload_size) {
   mfxStatus sts;
-  RTC_LOG(LS_INFO) << "InitEncodeOnEncoderThread: maxBitrate:"
+  RTC_LOG(LS_ERROR) << "InitEncodeOnEncoderThread: maxBitrate:"
                    << codec_settings->maxBitrate
                    << "framerate:" << codec_settings->maxFramerate
                    << "targetBitRate:" << codec_settings->maxBitrate
