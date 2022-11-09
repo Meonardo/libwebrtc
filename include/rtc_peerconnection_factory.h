@@ -9,8 +9,8 @@
 #include "rtc_media_stream.h"
 #include "rtc_mediaconstraints.h"
 #include "rtc_video_device.h"
-#include "rtc_video_source.h"
 #include "rtc_video_renderer.h"
+#include "rtc_video_source.h"
 
 namespace libwebrtc {
 
@@ -22,6 +22,11 @@ class GlobalConfiguration {
  public:
   LIB_WEBRTC_API static void SetVideoHardwareAccelerationEnabled(bool enabled);
   LIB_WEBRTC_API static bool GetVideoHardwareAccelerationEnabled();
+};
+
+class VideoFrameSizeChangeObserver {
+ public:
+  virtual void OnVideoFrameSizeChanged(HWND hwnd, uint16_t width, uint16_t height) = 0;
 };
 
 class RTCPeerConnectionFactory : public RefCountInterface {
@@ -39,8 +44,8 @@ class RTCPeerConnectionFactory : public RefCountInterface {
   virtual scoped_refptr<RTCAudioDevice> GetAudioDevice() = 0;
 
   virtual scoped_refptr<RTCVideoDevice> GetVideoDevice() = 0;
-#ifdef RTC_DESKTOP_DEVICE 
-  virtual scoped_refptr<RTCDesktopDevice>  GetDesktopDevice() = 0;
+#ifdef RTC_DESKTOP_DEVICE
+  virtual scoped_refptr<RTCDesktopDevice> GetDesktopDevice() = 0;
 #endif
   virtual scoped_refptr<RTCAudioSource> CreateAudioSource(
       const string audio_source_label) = 0;
@@ -49,7 +54,7 @@ class RTCPeerConnectionFactory : public RefCountInterface {
       scoped_refptr<RTCVideoCapturer> capturer,
       const string video_source_label,
       scoped_refptr<RTCMediaConstraints> constraints) = 0;
-#ifdef RTC_DESKTOP_DEVICE 
+#ifdef RTC_DESKTOP_DEVICE
   virtual scoped_refptr<RTCVideoSource> CreateDesktopSource(
       scoped_refptr<RTCDesktopCapturer> capturer,
       const string video_source_label,
@@ -66,7 +71,9 @@ class RTCPeerConnectionFactory : public RefCountInterface {
   virtual scoped_refptr<RTCMediaStream> CreateStream(
       const string stream_id) = 0;
 
-  virtual RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>* CreateVideoD3D11Renderer(HWND hwnd) = 0;
+  virtual RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>*
+  CreateVideoD3D11Renderer(HWND hwnd,
+                           VideoFrameSizeChangeObserver* observer) = 0;
 };
 
 }  // namespace libwebrtc

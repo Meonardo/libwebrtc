@@ -16,11 +16,11 @@ namespace libwebrtc {
 class VideoD3D11Renderer
         : public RTCVideoRenderer<scoped_refptr<RTCVideoFrame>> {
  public:
-  VideoD3D11Renderer(HWND hwnd) {
+  VideoD3D11Renderer(HWND hwnd, VideoFrameSizeChangeObserver* observer) {
     d3d11_renderer_impl_ =
         scoped_refptr<owt::base::WebrtcVideoRendererD3D11Impl>(
             new RefCountedObject<owt::base::WebrtcVideoRendererD3D11Impl>(
-                hwnd));
+                hwnd, observer));
   }
 
   ~VideoD3D11Renderer() {}

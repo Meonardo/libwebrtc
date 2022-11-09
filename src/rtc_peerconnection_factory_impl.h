@@ -72,7 +72,9 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
     return rtc_peerconnection_factory_;
   }
 
-  virtual RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>* CreateVideoD3D11Renderer(HWND hwnd) override;
+  virtual RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>*
+  CreateVideoD3D11Renderer(HWND hwnd,
+                           VideoFrameSizeChangeObserver* observer) override;
 
  protected:
   void CreateAudioDeviceModule_w();

@@ -102,20 +102,22 @@ typedef struct _VPE_CPU_GPU_COPY_PARAM {
   void* pSystemMem;
 } VPE_CPU_GPU_COPY_PARAM, *PVPE_CPU_GPU_COPY_PARAM;
 
+namespace libwebrtc {
+class VideoFrameSizeChangeObserver;
+}
+
 namespace owt {
 namespace base {
 
-// class VideoFrameSizeChangeObserver;
-
 class WebrtcVideoRendererD3D11Impl : public libwebrtc::RefCountInterface {
  public:
-  WebrtcVideoRendererD3D11Impl(HWND wnd);
-  // virtual void OnFrame(const webrtc::VideoFrame& frame) override;
+  WebrtcVideoRendererD3D11Impl(
+      HWND wnd,
+      libwebrtc::VideoFrameSizeChangeObserver* = nullptr);
   void OnFrame(webrtc::VideoFrameBuffer* buffer);
   virtual ~WebrtcVideoRendererD3D11Impl();
 
   Resolution GetFrameSize() const;
-  // void AddVideoFrameChangeObserver(VideoFrameSizeChangeObserver* o);
 
  private:
   bool InitMPO(int width, int height);
@@ -137,7 +139,7 @@ class WebrtcVideoRendererD3D11Impl : public libwebrtc::RefCountInterface {
 
   unsigned long frame_width_ = 0;
   unsigned long frame_height_ = 0;
-  // VideoFrameSizeChangeObserver* frame_observer_;
+  libwebrtc::VideoFrameSizeChangeObserver* frame_observer_;
 
   // D3D11 objects
   ID3D10Multithread* p_mt = nullptr;

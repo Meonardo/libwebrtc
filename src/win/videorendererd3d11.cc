@@ -7,12 +7,13 @@
 #include <cstdio>
 #include <system_error>
 
-#include "rtc_base/thread.h"
-#include "rtc_base/logging.h"
-#include "third_party/libyuv/include/libyuv/convert.h"
 #include "api/video/i420_buffer.h"
 #include "common_video/libyuv/include/webrtc_libyuv.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/thread.h"
+#include "third_party/libyuv/include/libyuv/convert.h"
 
+#include "rtc_peerconnection_factory.h"
 #include "src/win/nativehandlebuffer.h"
 
 using namespace rtc;
@@ -33,14 +34,15 @@ static const GUID GUID_VPE_INTERFACE = {
 #define VPE_FN_SR_SET_PARAM 0x401
 #define VPE_FN_SET_CPU_GPU_COPY_PARAM 0x2B
 
-WebrtcVideoRendererD3D11Impl::WebrtcVideoRendererD3D11Impl(HWND wnd)
-    : wnd_(wnd), clock_(Clock::GetRealTimeClock()) {
+WebrtcVideoRendererD3D11Impl::WebrtcVideoRendererD3D11Impl(
+    HWND wnd,
+    libwebrtc::VideoFrameSizeChangeObserver* observer)
+    : wnd_(wnd), frame_observer_(observer), clock_(Clock::GetRealTimeClock()) {
   CreateDXGIFactory(__uuidof(IDXGIFactory2), (void**)(&dxgi_factory_));
   sr_enabled_ = SupportSuperResolution();
 }
 
 WebrtcVideoRendererD3D11Impl::~WebrtcVideoRendererD3D11Impl() {
-
   if (d3d11_video_device_ != nullptr) {
     d3d11_video_device_->Release();
     d3d11_video_device_ = nullptr;
@@ -49,7 +51,7 @@ WebrtcVideoRendererD3D11Impl::~WebrtcVideoRendererD3D11Impl() {
     p_mt->Release();
     p_mt = nullptr;
   }
-  
+
   if (dxgi_factory_ != nullptr) {
     dxgi_factory_.Release();
     dxgi_factory_ = nullptr;
@@ -93,7 +95,8 @@ WebrtcVideoRendererD3D11Impl::~WebrtcVideoRendererD3D11Impl() {
   }
   if (d3d11_texture_ != nullptr) {
     if (!d3d11_mpo_inited_) {
-        // hardware decoding, `d3d11_texture_` will be release in `~MSDKVideoDecoder()`
+      // hardware decoding, `d3d11_texture_` will be release in
+      // `~MSDKVideoDecoder()`
       d3d11_texture_->Release();
     }
     d3d11_texture_ = nullptr;
@@ -128,7 +131,8 @@ WebrtcVideoRendererD3D11Impl::~WebrtcVideoRendererD3D11Impl() {
 }
 
 // The swapchain needs to use window height/width of even number.
-bool WebrtcVideoRendererD3D11Impl::GetWindowSizeForSwapChain(int& width, int& height) {
+bool WebrtcVideoRendererD3D11Impl::GetWindowSizeForSwapChain(int& width,
+                                                             int& height) {
   if (!wnd_ || !IsWindow(wnd_))
     return false;
 
@@ -159,10 +163,11 @@ void WebrtcVideoRendererD3D11Impl::OnFrame(webrtc::VideoFrameBuffer* buffer) {
   if (!wnd_ || !IsWindow(wnd_) || !IsWindowVisible(wnd_))
     return;
 
-  /*if (frame_observer_ != nullptr && frame_width_ != width &&
+  if (frame_observer_ != nullptr && frame_width_ != width &&
       frame_height_ != height) {
-    frame_observer_->OnVideoFrameSizeChanged(Resolution(width, height));
-  }*/
+    frame_observer_->OnVideoFrameSizeChanged(wnd_, (uint16_t) width,
+                                             (uint16_t)height);
+  }
   frame_width_ = width;
   frame_height_ = height;
 
@@ -173,10 +178,10 @@ void WebrtcVideoRendererD3D11Impl::OnFrame(webrtc::VideoFrameBuffer* buffer) {
   /*int window_width = rect.right - rect.left;
   int window_height = rect.bottom - rect.top;*/
 
-  if (buffer->type() ==
-      webrtc::VideoFrameBuffer::Type::kNative) {
+  if (buffer->type() == webrtc::VideoFrameBuffer::Type::kNative) {
     D3D11ImageHandle* native_handle = reinterpret_cast<D3D11ImageHandle*>(
-        reinterpret_cast<owt::base::NativeHandleBuffer*>(buffer)->native_handle());
+        reinterpret_cast<owt::base::NativeHandleBuffer*>(buffer)
+            ->native_handle());
 
     if (native_handle == nullptr) {
       RTC_LOG(LS_ERROR) << "Invalid video buffer handle.";
@@ -222,11 +227,6 @@ Resolution WebrtcVideoRendererD3D11Impl::GetFrameSize() const {
   return Resolution(frame_width_, frame_height_);
 }
 
-//void WebrtcVideoRendererD3D11Impl::AddVideoFrameChangeObserver(
-//    VideoFrameSizeChangeObserver* o) {
-//  frame_observer_ = o;
-//}
-
 bool WebrtcVideoRendererD3D11Impl::InitD3D11(int width, int height) {
   HRESULT hr = S_OK;
   UINT creation_flags = 0;
@@ -235,10 +235,10 @@ bool WebrtcVideoRendererD3D11Impl::InitD3D11(int width, int height) {
   creation_flags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
-  D3D_FEATURE_LEVEL feature_levels_in[] = {D3D_FEATURE_LEVEL_9_1,  D3D_FEATURE_LEVEL_9_2,
-                                D3D_FEATURE_LEVEL_9_3,  D3D_FEATURE_LEVEL_10_0,
-                                D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_11_0,
-                                D3D_FEATURE_LEVEL_11_1};
+  D3D_FEATURE_LEVEL feature_levels_in[] = {
+      D3D_FEATURE_LEVEL_9_1,  D3D_FEATURE_LEVEL_9_2,  D3D_FEATURE_LEVEL_9_3,
+      D3D_FEATURE_LEVEL_10_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_11_0,
+      D3D_FEATURE_LEVEL_11_1};
   D3D_FEATURE_LEVEL feature_levels_out;
   hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,
                          creation_flags, feature_levels_in,
@@ -263,7 +263,8 @@ bool WebrtcVideoRendererD3D11Impl::InitD3D11(int width, int height) {
 }
 
 bool WebrtcVideoRendererD3D11Impl::InitSwapChain(int width,
-    int height, bool reset) {
+                                                 int height,
+                                                 bool reset) {
   if (width <= 0 || height <= 0) {
     RTC_LOG(LS_ERROR) << "Invalid video width for swapchain creation.";
     return false;
@@ -297,14 +298,14 @@ bool WebrtcVideoRendererD3D11Impl::InitSwapChain(int width,
       d3d11_device_context_->Flush();
 
       hr = swap_chain_for_hwnd_->ResizeBuffers(0, window_width_, window_height_,
-                                              DXGI_FORMAT_UNKNOWN, desc.Flags);
+                                               DXGI_FORMAT_UNKNOWN, desc.Flags);
       if (FAILED(hr)) {
         RTC_LOG(LS_ERROR) << "Failed to resize buffer for swapchain.";
         return false;
       }
     } else {
       return true;
-    } 
+    }
   }
 
   DXGI_SWAP_CHAIN_DESC1 desc;
@@ -350,7 +351,8 @@ bool WebrtcVideoRendererD3D11Impl::InitSwapChain(int width,
   if (swap_chain_for_hwnd_)
     swap_chain_for_hwnd_.Release();
 
-  hr = factory->CreateSwapChainForHwnd(d3d11_device_, wnd_, &desc, nullptr, nullptr, &swap_chain_for_hwnd_);
+  hr = factory->CreateSwapChainForHwnd(d3d11_device_, wnd_, &desc, nullptr,
+                                       nullptr, &swap_chain_for_hwnd_);
   if (FAILED(hr)) {
     std::string message = std::system_category().message(hr);
     RTC_LOG(LS_ERROR) << "Failed to create swapchain for hwnd." << message;
@@ -360,9 +362,11 @@ bool WebrtcVideoRendererD3D11Impl::InitSwapChain(int width,
   return true;
 }
 
-void WebrtcVideoRendererD3D11Impl::RenderNativeHandleFrame(webrtc::VideoFrameBuffer* buffer) {
+void WebrtcVideoRendererD3D11Impl::RenderNativeHandleFrame(
+    webrtc::VideoFrameBuffer* buffer) {
   D3D11ImageHandle* native_handle = reinterpret_cast<D3D11ImageHandle*>(
-      reinterpret_cast<owt::base::NativeHandleBuffer*>(buffer)->native_handle());
+      reinterpret_cast<owt::base::NativeHandleBuffer*>(buffer)
+          ->native_handle());
 
   if (native_handle == nullptr)
     return;
@@ -434,7 +438,8 @@ void WebrtcVideoRendererD3D11Impl::RenderNV12DXGIMPO(int width, int height) {
     }
   }
 
-  // We are actually not resetting video processor when no input/output size change.
+  // We are actually not resetting video processor when no input/output size
+  // change.
   bool reset = false;
 
   if (!d3d11_video_context_) {
@@ -684,7 +689,7 @@ void WebrtcVideoRendererD3D11Impl::RenderD3D11Texture(int width, int height) {
     VPE_FUNCTION function_params;
     VPE_VERSION vpe_version = {};
     VPE_MODE vpe_mode = {};
-    //SR_SCALING_MODE sr_scaling_params = {};
+    // SR_SCALING_MODE sr_scaling_params = {};
     VPE_SR_PARAMS sr_params = {};
     void* p_ext_data = nullptr;
     UINT data_size = 0;
@@ -747,7 +752,8 @@ sr_fail:
   }
 }
 
-void WebrtcVideoRendererD3D11Impl::RenderI420Frame_DX11(webrtc::VideoFrameBuffer* buffer) {
+void WebrtcVideoRendererD3D11Impl::RenderI420Frame_DX11(
+    webrtc::VideoFrameBuffer* buffer) {
   if (!d3d11_raw_inited_ && !InitD3D11(buffer->width(), buffer->height())) {
     RTC_LOG(LS_ERROR) << "Failed to init d3d11 device.";
     return;
@@ -773,18 +779,16 @@ void WebrtcVideoRendererD3D11Impl::RenderI420Frame_DX11(webrtc::VideoFrameBuffer
   HRESULT hr = S_OK;
   p_mt->Enter();
   D3D11_MAPPED_SUBRESOURCE sub_resource = {0};
-  hr = d3d11_device_context_->Map(d3d11_staging_texture_, 0,  D3D11_MAP_READ_WRITE, 0, &sub_resource);
+  hr = d3d11_device_context_->Map(d3d11_staging_texture_, 0,
+                                  D3D11_MAP_READ_WRITE, 0, &sub_resource);
   if (FAILED(hr)) {
     RTC_LOG(LS_ERROR) << "Failed to map texture.";
     return;
   }
 
-  libyuv::I420ToARGB(buffer->GetI420()->DataY(),
-                     buffer->GetI420()->StrideY(),
-                     buffer->GetI420()->DataU(),
-                     buffer->GetI420()->StrideU(),
-                     buffer->GetI420()->DataV(),
-                     buffer->GetI420()->StrideV(),
+  libyuv::I420ToARGB(buffer->GetI420()->DataY(), buffer->GetI420()->StrideY(),
+                     buffer->GetI420()->DataU(), buffer->GetI420()->StrideU(),
+                     buffer->GetI420()->DataV(), buffer->GetI420()->StrideV(),
                      static_cast<uint8_t*>(sub_resource.pData),
                      sub_resource.RowPitch, buffer->width(), buffer->height());
   d3d11_device_context_->Unmap(d3d11_staging_texture_, 0);
@@ -816,7 +820,7 @@ void WebrtcVideoRendererD3D11Impl::RenderI420Frame_DX11(webrtc::VideoFrameBuffer
 
   if (!d3d11_video_context_) {
     hr = d3d11_device_context_->QueryInterface(__uuidof(ID3D11VideoContext),
-                                                 (void**)&d3d11_video_context_);
+                                               (void**)&d3d11_video_context_);
     if (FAILED(hr)) {
       RTC_LOG(LS_ERROR) << "Failed to get d3d11 video context.";
       return;
@@ -824,8 +828,7 @@ void WebrtcVideoRendererD3D11Impl::RenderI420Frame_DX11(webrtc::VideoFrameBuffer
   }
   p_mt->Leave();
 
-  if (!CreateVideoProcessor(buffer->width(), buffer->height(),
-                              false)) {
+  if (!CreateVideoProcessor(buffer->width(), buffer->height(), false)) {
     RTC_LOG(LS_ERROR) << "Failed to create video processor.";
     return;
   }
@@ -859,8 +862,7 @@ bool WebrtcVideoRendererD3D11Impl::CreateStagingTexture(int width, int height) {
   desc.MiscFlags = 0;
   desc.BindFlags = 0;
 
-  hr = d3d11_device_->CreateTexture2D(&desc, nullptr,
-                                            &d3d11_staging_texture_);
+  hr = d3d11_device_->CreateTexture2D(&desc, nullptr, &d3d11_staging_texture_);
   if (FAILED(hr)) {
     RTC_LOG(LS_ERROR) << "Failed to create staging texture.";
     return false;
@@ -871,7 +873,7 @@ bool WebrtcVideoRendererD3D11Impl::CreateStagingTexture(int width, int height) {
 
 // Checks support for super resolution.
 bool WebrtcVideoRendererD3D11Impl::SupportSuperResolution() {
-  //return GlobalConfiguration::GetVideoSuperResolutionEnabled();
+  // return GlobalConfiguration::GetVideoSuperResolutionEnabled();
   return false;
 }
 
