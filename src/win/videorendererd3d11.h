@@ -137,8 +137,8 @@ class WebrtcVideoRendererD3D11Impl : public libwebrtc::RefCountInterface {
   int window_width_ = 0;
   int window_height_ = 0;
 
-  unsigned long frame_width_ = 0;
-  unsigned long frame_height_ = 0;
+  int frame_width_ = 0;
+  int frame_height_ = 0;
   libwebrtc::VideoFrameSizeChangeObserver* frame_observer_;
 
   // D3D11 objects

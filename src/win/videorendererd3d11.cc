@@ -152,8 +152,8 @@ bool WebrtcVideoRendererD3D11Impl::GetWindowSizeForSwapChain(int& width,
 }
 
 void WebrtcVideoRendererD3D11Impl::OnFrame(webrtc::VideoFrameBuffer* buffer) {
-  uint16_t width = buffer->width();
-  uint16_t height = buffer->height();
+  int width = buffer->width();
+  int height = buffer->height();
 
   if (width == 0 || height == 0) {
     RTC_LOG(LS_ERROR) << "Invalid video frame size.";
@@ -175,8 +175,8 @@ void WebrtcVideoRendererD3D11Impl::OnFrame(webrtc::VideoFrameBuffer* buffer) {
   // so we're not rounding it up to even number.
   RECT rect;
   GetClientRect(wnd_, &rect);
-  /*int window_width = rect.right - rect.left;
-  int window_height = rect.bottom - rect.top;*/
+  int window_width = rect.right - rect.left;
+  int window_height = rect.bottom - rect.top;
 
   if (buffer->type() == webrtc::VideoFrameBuffer::Type::kNative) {
     D3D11ImageHandle* native_handle = reinterpret_cast<D3D11ImageHandle*>(
@@ -211,14 +211,12 @@ void WebrtcVideoRendererD3D11Impl::OnFrame(webrtc::VideoFrameBuffer* buffer) {
     RenderNativeHandleFrame(buffer);
   } else {  // I420 frame passed.
     // First scale down to target window size.
-    /*webrtc::VideoFrame new_frame(video_frame);
     rtc::scoped_refptr<webrtc::I420Buffer> scaled_buffer =
         I420Buffer::Create(window_width, window_height);
-    auto i420_buffer = video_frame.video_frame_buffer()->ToI420();
+    auto i420_buffer = buffer->ToI420();
     scaled_buffer->ScaleFrom(*i420_buffer);
-    new_frame.set_video_frame_buffer(scaled_buffer);*/
 
-    RenderI420Frame_DX11(buffer);
+    RenderI420Frame_DX11(scaled_buffer);
   }
   return;
 }
@@ -581,8 +579,8 @@ bool WebrtcVideoRendererD3D11Impl::CreateVideoProcessor(int width,
 
     if (content_desc.InputWidth != (unsigned int)width ||
         content_desc.InputHeight != (unsigned int)height ||
-        content_desc.OutputWidth != window_width_ ||
-        content_desc.OutputHeight != window_height_ || reset) {
+        content_desc.OutputWidth != (unsigned int)window_width_ ||
+        content_desc.OutputHeight != (unsigned int)window_height_ || reset) {
       video_processor_enum_.Release();
       video_processor_.Release();
     } else {
