@@ -197,6 +197,36 @@ std::vector<AudioDevice> DeviceUtils::AudioCapturerDevices() {
   return v;
 }
 
+/// Get audio playback Devices.
+std::vector<AudioDevice> DeviceUtils::AudioPlaybackDevices() {
+  std::vector<AudioDevice> v;
+
+  webrtc::AudioDeviceNames device_names;
+  bool ok = webrtc::webrtc_win::core_audio_utility::GetOutputDeviceNames(
+      &device_names);
+  if (ok) {
+    v.reserve(device_names.size());
+    for (const auto& d : device_names) {
+      v.emplace_back(d.device_name, d.unique_id);
+    }
+  }
+
+  return v;
+}
+
+void DeviceUtils::GetDefaultAudioCapturerDeviceId(char* id, size_t size) {
+  auto device_id =
+      webrtc::webrtc_win::core_audio_utility::GetDefaultInputDeviceID();
+  strncpy_s(id, size, device_id.c_str(), size);
+}
+
+void DeviceUtils::GetDefaultAudioPlaybackDeviceId(char* id, size_t size) {
+  auto device_id =
+      webrtc::webrtc_win::core_audio_utility::GetDefaultOutputDeviceID();
+  // strdup(device_id.c_str());
+  strncpy_s(id, size, device_id.c_str(), size);
+}
+
 /// Get the microphone device index by its device id.
 int DeviceUtils::GetAudioCapturerDeviceIndex(const std::string& id) {
   if (IsDefaultDeviceId(id, true)) {

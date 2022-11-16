@@ -52,6 +52,14 @@ class DeviceUtils {
   // definition.
   /// Get audio capturer IDs.
   LIB_WEBRTC_API static std::vector<AudioDevice> AudioCapturerDevices();
+  LIB_WEBRTC_API static std::vector<AudioDevice> AudioPlaybackDevices();
+
+  /// Get the playback & recording device id.
+  LIB_WEBRTC_API static void GetDefaultAudioCapturerDeviceId(char* id,
+                                                             size_t size);
+  LIB_WEBRTC_API static void GetDefaultAudioPlaybackDeviceId(char* id,
+                                                             size_t size);
+
   /// Get the microphone device index by its device id.
   LIB_WEBRTC_API static int GetAudioCapturerDeviceIndex(const std::string& id);
   /// Get microphone device by index.
