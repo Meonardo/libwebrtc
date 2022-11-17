@@ -200,7 +200,7 @@ RTCPeerConnectionImpl::RTCPeerConnectionImpl(
 
 RTCPeerConnectionImpl::~RTCPeerConnectionImpl() {
   Close();
-  RTC_LOG(INFO) << __FUNCTION__ << ": dtor";
+  RTC_LOG(LS_ERROR) << __FUNCTION__ << ": dtor";
 }
 
 void RTCPeerConnectionImpl::OnAddTrack(
@@ -291,8 +291,10 @@ void RTCPeerConnectionImpl::OnRenegotiationNeeded() {
 
 void RTCPeerConnectionImpl::OnConnectionChange(
     webrtc::PeerConnectionInterface::PeerConnectionState new_state) {
-  if (nullptr != observer_)
+  if (nullptr != observer_) {
+    RTC_LOG(LS_ERROR) << __FUNCTION__ << " " << new_state;
     observer_->OnPeerConnectionState(peer_connection_state_map[new_state]);
+  }
 }
 
 void RTCPeerConnectionImpl::OnIceGatheringChange(
@@ -363,8 +365,10 @@ void RTCPeerConnectionImpl::RegisterRTCPeerConnectionObserver(
 }
 
 void RTCPeerConnectionImpl::DeRegisterRTCPeerConnectionObserver() {
+  RTC_LOG(LS_ERROR) << __FUNCTION__ << " begin.";
   webrtc::MutexLock cs(callback_crt_sec_.get());
   observer_ = nullptr;
+  RTC_LOG(LS_ERROR) << __FUNCTION__ << " end.";
 }
 
 bool RTCPeerConnectionImpl::Initialize() {
@@ -607,7 +611,7 @@ void RTCPeerConnectionImpl::RestartIce() {
 }
 
 void RTCPeerConnectionImpl::Close() {
-  RTC_LOG(INFO) << __FUNCTION__ << " begin";
+  RTC_LOG(LS_ERROR) << __FUNCTION__ << " begin";
   if (rtc_peerconnection_.get()) {
     rtc_peerconnection_ = nullptr;
     data_channel_ = nullptr;
@@ -628,7 +632,7 @@ void RTCPeerConnectionImpl::Close() {
     remote_streams_.clear();
   }
 
-  RTC_LOG(INFO) << __FUNCTION__ << " end.";
+  RTC_LOG(LS_ERROR) << __FUNCTION__ << " end.";
 }
 
 int RTCPeerConnectionImpl::AddStream(scoped_refptr<RTCMediaStream> stream) {
