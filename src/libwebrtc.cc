@@ -103,12 +103,12 @@ void LibWebRTC::ExecuteFuncOnSignalingThread(void (*func)(void*), void* args) {
 }
 
 void LibWebRTC::AsyncExecuteFuncOnWorkerThread(void (*func)(void*), void* args) {
-  worker_thread->PostTask(RTC_FROM_HERE, [&]() { func(args); });
+  worker_thread->PostTask(RTC_FROM_HERE, [func, args]() { func(args); });
 }
 
 void LibWebRTC::AsyncExecuteFuncOnSignalingThread(void (*func)(void*),
                                                   void* args) {
-  signaling_thread->PostTask(RTC_FROM_HERE, [&]() { func(args); });
+  signaling_thread->PostTask(RTC_FROM_HERE, [func, args]() { func(args); });
 }
 
 }  // namespace libwebrtc
