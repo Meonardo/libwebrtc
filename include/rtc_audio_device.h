@@ -48,6 +48,10 @@ class RTCAudioDevice : public RefCountInterface {
 
   virtual int RestartPlayoutDevice() = 0;
 
+  virtual bool RecordingIsInitialized() const = 0;
+  virtual bool RestartRecorder() const = 0;
+  virtual bool ToggleRecordingMute(bool mute) = 0;
+
  protected:
   virtual ~RTCAudioDevice() {}
 };

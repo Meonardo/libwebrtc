@@ -86,6 +86,54 @@ int AudioDeviceImpl::RestartPlayoutDevice() {
   });
 }
 
+bool AudioDeviceImpl::RecordingIsInitialized() const {
+  return worker_thread_->Invoke<bool>(RTC_FROM_HERE, [&] {
+    RTC_DCHECK_RUN_ON(worker_thread_);
+
+    return audio_device_module_->RecordingIsInitialized();
+  });
+}
+
+bool AudioDeviceImpl::RestartRecorder() const {
+  return worker_thread_->Invoke<bool>(RTC_FROM_HERE, [&] {
+    RTC_DCHECK_RUN_ON(worker_thread_);    
+
+    if (!audio_device_module_->Recording()) {
+      if (audio_device_module_->InitRecording() == 0) {
+#if defined(WEBRTC_WIN)
+        if (audio_device_module_->BuiltInAECIsAvailable() &&
+            !audio_device_module_->Playing()) {
+          if (!audio_device_module_->PlayoutIsInitialized()) {
+            audio_device_module_->InitPlayout();
+          }
+          audio_device_module_->StartPlayout();
+        }
+#endif
+        audio_device_module_->StartRecording();
+      } else {
+        RTC_DLOG_F(LS_ERROR) << "Failed to initialize recording.";
+        return false;
+      }
+    }
+    return audio_device_module_->StartRecording() == 0;
+  });
+}
+
+bool AudioDeviceImpl::ToggleRecordingMute(bool mute) {
+  if (mute) {
+    return worker_thread_->Invoke<bool>(RTC_FROM_HERE, [&] {
+      RTC_DCHECK_RUN_ON(worker_thread_);
+
+      if (!audio_device_module_->Recording()) {
+        return false;
+      }
+      return audio_device_module_->StopRecording() == 0;
+    });
+  } else {
+    return RestartRecorder();
+  }
+}
+
 void AudioDeviceImpl::OnDevicesUpdated() {}
 
 void AudioDeviceImpl::OnDevicesChanged(AudioDeviceSink::EventType e,

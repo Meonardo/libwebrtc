@@ -37,6 +37,12 @@ class AudioDeviceImpl : public RTCAudioDevice, public webrtc::AudioDeviceSink {
 
   int RestartPlayoutDevice() override;
 
+  bool RecordingIsInitialized() const override;
+
+  bool RestartRecorder() const override;
+
+  bool ToggleRecordingMute(bool mute) override;
+
  protected:
   void OnDevicesUpdated() override;
   void OnDevicesChanged(AudioDeviceSink::EventType e,
