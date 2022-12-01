@@ -69,8 +69,7 @@ static std::map<webrtc::PeerConnectionInterface::PeerConnectionState,
         {webrtc::PeerConnectionInterface::PeerConnectionState::kConnected,
          libwebrtc::RTCPeerConnectionState::RTCPeerConnectionStateConnected},
         {webrtc::PeerConnectionInterface::PeerConnectionState::kDisconnected,
-         libwebrtc::RTCPeerConnectionState::
-             RTCPeerConnectionStateDisconnected},
+         libwebrtc::RTCPeerConnectionState::RTCPeerConnectionStateDisconnected},
         {webrtc::PeerConnectionInterface::PeerConnectionState::kClosed,
          libwebrtc::RTCPeerConnectionState::RTCPeerConnectionStateClosed},
         {webrtc::PeerConnectionInterface::PeerConnectionState::kFailed,
@@ -291,6 +290,7 @@ void RTCPeerConnectionImpl::OnRenegotiationNeeded() {
 
 void RTCPeerConnectionImpl::OnConnectionChange(
     webrtc::PeerConnectionInterface::PeerConnectionState new_state) {
+  webrtc::MutexLock cs(callback_crt_sec_.get());
   if (nullptr != observer_) {
     RTC_LOG(LS_ERROR) << __FUNCTION__ << " " << new_state;
     observer_->OnPeerConnectionState(peer_connection_state_map[new_state]);
@@ -299,18 +299,21 @@ void RTCPeerConnectionImpl::OnConnectionChange(
 
 void RTCPeerConnectionImpl::OnIceGatheringChange(
     webrtc::PeerConnectionInterface::IceGatheringState new_state) {
+  webrtc::MutexLock cs(callback_crt_sec_.get());
   if (nullptr != observer_)
     observer_->OnIceGatheringState(ice_gathering_state_map[new_state]);
 }
 
 void RTCPeerConnectionImpl::OnIceConnectionChange(
     webrtc::PeerConnectionInterface::IceConnectionState new_state) {
+  webrtc::MutexLock cs(callback_crt_sec_.get());
   if (nullptr != observer_)
     observer_->OnIceConnectionState(ice_connection_state_map[new_state]);
 }
 
 void RTCPeerConnectionImpl::OnSignalingChange(
     webrtc::PeerConnectionInterface::SignalingState new_state) {
+  webrtc::MutexLock cs(callback_crt_sec_.get());
   if (nullptr != observer_)
     observer_->OnSignalingState(signaling_state_map[new_state]);
 }
@@ -344,18 +347,21 @@ void RTCPeerConnectionImpl::OnIceCandidate(
   }
 #endif
 
-  std::string cand_sdp;
-  if (observer_ != nullptr && candidate->ToString(&cand_sdp)) {
-    SdpParseError error;
-    scoped_refptr<RTCIceCandidate> cand =
-        RTCIceCandidate::Create(cand_sdp.c_str(), candidate->sdp_mid().c_str(),
-                                candidate->sdp_mline_index(), &error);
-    observer_->OnIceCandidate(cand);
-  }
+  {
+    webrtc::MutexLock cs(callback_crt_sec_.get());
+    std::string cand_sdp;
+    if (observer_ != nullptr && candidate->ToString(&cand_sdp)) {
+      SdpParseError error;
+      scoped_refptr<RTCIceCandidate> cand = RTCIceCandidate::Create(
+          cand_sdp.c_str(), candidate->sdp_mid().c_str(),
+          candidate->sdp_mline_index(), &error);
+      observer_->OnIceCandidate(cand);
+    }
 
-  RTC_LOG(INFO) << __FUNCTION__ << ", mid " << candidate->sdp_mid()
-                << ", mline " << candidate->sdp_mline_index() << ", sdp"
-                << cand_sdp;
+    RTC_LOG(INFO) << __FUNCTION__ << ", mid " << candidate->sdp_mid()
+                  << ", mline " << candidate->sdp_mline_index() << ", sdp"
+                  << cand_sdp;
+  }
 }
 
 void RTCPeerConnectionImpl::RegisterRTCPeerConnectionObserver(
@@ -415,7 +421,8 @@ bool RTCPeerConnectionImpl::Initialize() {
 
   RTCMediaConstraintsImpl* media_constraints =
       static_cast<RTCMediaConstraintsImpl*>(constraints_.get());
-  webrtc::MediaConstraints rtc_constraints(media_constraints->GetMandatory(),media_constraints->GetOptional());   
+  webrtc::MediaConstraints rtc_constraints(media_constraints->GetMandatory(),
+                                           media_constraints->GetOptional());
   CopyConstraintsIntoRtcConfiguration(&rtc_constraints, &config);
 
   webrtc::PeerConnectionFactoryInterface::Options options;
@@ -570,7 +577,8 @@ void RTCPeerConnectionImpl::CreateOffer(
   RTCMediaConstraintsImpl* media_constraints =
       static_cast<RTCMediaConstraintsImpl*>(constraints.get());
   webrtc::PeerConnectionInterface::RTCOfferAnswerOptions offer_answer_options;
-  webrtc::MediaConstraints rtc_constraints(media_constraints->GetMandatory(),media_constraints->GetOptional());
+  webrtc::MediaConstraints rtc_constraints(media_constraints->GetMandatory(),
+                                           media_constraints->GetOptional());
   if (CopyConstraintsIntoOfferAnswerOptions(&rtc_constraints,
                                             &offer_answer_options) == false) {
     offer_answer_options = offer_answer_options_;
@@ -593,7 +601,8 @@ void RTCPeerConnectionImpl::CreateAnswer(
   RTCMediaConstraintsImpl* media_constraints =
       static_cast<RTCMediaConstraintsImpl*>(constraints.get());
   webrtc::PeerConnectionInterface::RTCOfferAnswerOptions offer_answer_options;
-  webrtc::MediaConstraints rtc_constraints(media_constraints->GetMandatory(),media_constraints->GetOptional());
+  webrtc::MediaConstraints rtc_constraints(media_constraints->GetMandatory(),
+                                           media_constraints->GetOptional());
   if (CopyConstraintsIntoOfferAnswerOptions(&rtc_constraints,
                                             &offer_answer_options) == false) {
     offer_answer_options = offer_answer_options_;
