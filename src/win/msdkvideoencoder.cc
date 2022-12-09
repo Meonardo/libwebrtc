@@ -186,8 +186,9 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
 
   }
   MSDKFactory* factory = MSDKFactory::Get();
-  // We're not using d3d11.
-  m_mfx_session_ = factory->CreateSession(false);
+  // We're not using d3d11. 
+  // somehow it will return nullptr if not use d3d11 to create session.
+  m_mfx_session_ = factory->CreateSession();
   if (!m_mfx_session_) {
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
