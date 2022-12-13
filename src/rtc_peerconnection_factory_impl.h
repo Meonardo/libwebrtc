@@ -64,6 +64,10 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
       scoped_refptr<RTCVideoSource> source,
       const string track_id) override;
 
+  virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(
+      std::unique_ptr<owt::base::VideoFrameGeneratorInterface> v_frame_genrator,
+      const string track_id) override;
+
   virtual scoped_refptr<RTCMediaStream> CreateStream(
       const string stream_id) override;
 

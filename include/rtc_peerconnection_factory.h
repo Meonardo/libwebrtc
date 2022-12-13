@@ -11,6 +11,7 @@
 #include "rtc_video_device.h"
 #include "rtc_video_renderer.h"
 #include "rtc_video_source.h"
+#include "framegeneratorinterface.h"
 
 namespace libwebrtc {
 
@@ -66,6 +67,10 @@ class RTCPeerConnectionFactory : public RefCountInterface {
 
   virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(
       scoped_refptr<RTCVideoSource> source,
+      const string track_id) = 0;
+
+  virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(
+      std::unique_ptr<owt::base::VideoFrameGeneratorInterface> v_frame_genrator,
       const string track_id) = 0;
 
   virtual scoped_refptr<RTCMediaStream> CreateStream(

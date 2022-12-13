@@ -10,6 +10,7 @@
 #include "rtc_base/thread.h"
 #include "system_wrappers/include/clock.h"
 
+#include "src/rtc_video_frame_impl.h"
 #include "src/win/customizedencoderbufferhandle.h"
 #include "src/win/customizedframescapturer.h"
 #include "src/win/nativehandlebuffer.h"
@@ -31,6 +32,7 @@ class CustomizedFramesCapturer::CustomizedFramesThread
       : rtc::Thread(rtc::CreateDefaultSocketServer()), capturer_(capturer) {
     finished_ = false;
     waiting_time_ms = 1000 / fps;
+    this->SetName("customized_capture_thread", NULL);
   }
   virtual ~CustomizedFramesThread() { Stop(); }
   // Override virtual method of parent Thread. Context: Worker Thread.
@@ -39,7 +41,7 @@ class CustomizedFramesCapturer::CustomizedFramesThread
     // Stop() is called externally or Quit() is called by OnMessage().
     // Before returning, cleanup any thread-sensitive resources.
     if (capturer_) {
-      capturer_->ReadFrame();
+      // capturer_->ReadFrame();
       rtc::Thread::Current()->Post(RTC_FROM_HERE, this);
       rtc::Thread::Current()->ProcessMessages(kForever);
       capturer_->CleanupGenerator();
@@ -50,7 +52,7 @@ class CustomizedFramesCapturer::CustomizedFramesThread
   // Override virtual method of parent MessageHandler. Context: Worker Thread.
   virtual void OnMessage(rtc::Message* /*pmsg*/) {
     if (capturer_) {
-      capturer_->ReadFrame();
+      // capturer_->ReadFrame();
       rtc::Thread::Current()->PostDelayed(RTC_FROM_HERE, waiting_time_ms, this);
     } else {
       rtc::Thread::Current()->Quit();
@@ -83,7 +85,10 @@ CustomizedFramesCapturer::CustomizedFramesCapturer(
       bitrate_kbps_(0),
       frame_type_(frame_generator_->GetType()),
       frame_buffer_capacity_(0),
-      frame_buffer_(nullptr) {}
+      frame_buffer_(nullptr) {
+  frame_generator_->SetFrameReceiver(this);
+}
+
 CustomizedFramesCapturer::CustomizedFramesCapturer(
     int width,
     int height,
@@ -167,7 +172,7 @@ int32_t CustomizedFramesCapturer::CaptureSettings(
   settings.width = width_;
   settings.height = height_;
   settings.maxFPS = fps_;
-  settings.videoType = webrtc::VideoType::kI420;
+  settings.videoType = webrtc::VideoType::kNV12;
 
   return 0;
 }
@@ -255,5 +260,23 @@ void CustomizedFramesCapturer::ReadFrame() {
     data_callback_->OnFrame(pending_frame);
   }
 }
+
+void CustomizedFramesCapturer::OnFrame(
+    libwebrtc::scoped_refptr<libwebrtc::RTCVideoFrame> frame) {
+  auto frame_impl =
+      reinterpret_cast<libwebrtc::VideoFrameBufferImpl*>(frame.get());
+
+  webrtc::VideoFrame capture_frame =
+      webrtc::VideoFrame::Builder()
+          .set_video_frame_buffer(frame_impl->buffer())
+          .set_timestamp_rtp(0)
+          .set_timestamp_ms(rtc::TimeMillis())
+          .set_rotation(webrtc::kVideoRotation_0)
+          .build();
+
+  capture_frame.set_ntp_time_ms(0);
+  data_callback_->OnFrame(capture_frame);
+}
+
 }  // namespace base
 }  // namespace owt

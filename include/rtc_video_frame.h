@@ -32,6 +32,10 @@ class RTCVideoFrame : public RefCountInterface {
       const uint8_t* data_v,
       int stride_v);
 
+  // create NV12 frame
+  LIB_WEBRTC_API static scoped_refptr<RTCVideoFrame>
+  Create(int width, int height, const uint8_t* data_y, const uint8_t* data_uv);
+
   virtual scoped_refptr<RTCVideoFrame> Copy() = 0;
 
   virtual PixelFormat PixFormat() const = 0;

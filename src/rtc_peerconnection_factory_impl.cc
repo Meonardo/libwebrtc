@@ -19,6 +19,8 @@
 #include "src/win/mediacapabilities.h"
 #include "src/win/msdkvideodecoderfactory.h"
 #include "src/win/msdkvideoencoderfactory.h"
+#include "src/win/customizedvideosource.h"
+#include "src/win/customizedframescapturer.h"
 
 #if defined(WEBRTC_IOS)
 #include "engine/sdk/objc/Framework/Classes/videotoolboxvideocodecfactory.h"
@@ -297,6 +299,23 @@ scoped_refptr<RTCVideoTrack> RTCPeerConnectionFactoryImpl::CreateVideoTrack(
   // 		LOG(INFO) << "VideoTrackInterface: " << track->id();
   // 	}
 
+  return video_track;
+}
+
+scoped_refptr<RTCVideoTrack> RTCPeerConnectionFactoryImpl::CreateVideoTrack(
+  std::unique_ptr<owt::base::VideoFrameGeneratorInterface> video_frame_genrator,
+  const string track_id) {
+  rtc::scoped_refptr<owt::base::LocalRawCaptureTrackSource> video_device =
+      owt::base::LocalRawCaptureTrackSource::Create(std::move(video_frame_genrator));
+  if (video_device == nullptr)
+    return nullptr;
+
+  rtc::scoped_refptr<webrtc::VideoTrackInterface> rtc_video_track =
+      rtc_peerconnection_factory_->CreateVideoTrack(to_std_string(track_id),
+                                                    video_device.get());
+
+  scoped_refptr<VideoTrackImpl> video_track = scoped_refptr<VideoTrackImpl>(
+      new RefCountedObject<VideoTrackImpl>(rtc_video_track));
   return video_track;
 }
 

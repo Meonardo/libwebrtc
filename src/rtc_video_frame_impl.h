@@ -4,6 +4,7 @@
 #include "rtc_video_frame.h"
 
 #include "api/video/i420_buffer.h"
+#include "api/video/nv12_buffer.h"
 #include "api/video/video_frame_buffer.h"
 #include "api/video/video_rotation.h"
 #include "common_video/include/video_frame_buffer.h"
@@ -15,6 +16,8 @@ class VideoFrameBufferImpl : public RTCVideoFrame {
   VideoFrameBufferImpl(
       rtc::scoped_refptr<webrtc::VideoFrameBuffer> frame_buffer);
   VideoFrameBufferImpl(rtc::scoped_refptr<webrtc::I420Buffer> frame_buffer);
+  // create nv12 frame
+  VideoFrameBufferImpl(rtc::scoped_refptr<webrtc::NV12Buffer> frame_buffer);
 
   virtual ~VideoFrameBufferImpl();
 

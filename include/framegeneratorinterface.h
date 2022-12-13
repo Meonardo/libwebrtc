@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #ifndef OWT_BASE_FRAMEGENERATORINTERFACE_H_
 #define OWT_BASE_FRAMEGENERATORINTERFACE_H_
+#include "rtc_video_frame.h"
 #include "stdint.h"
 namespace owt {
 namespace base {
@@ -30,6 +31,14 @@ class AudioFrameGeneratorInterface {
   virtual int GetChannelNumber() = 0;
   virtual ~AudioFrameGeneratorInterface() {}
 };
+
+// `owt::base::CustomizedFramesCapturer` impls this interface
+class VideoFrameReceiverInterface {
+ public:
+  virtual void OnFrame(
+      libwebrtc::scoped_refptr<libwebrtc::RTCVideoFrame> frame) = 0;
+};
+
 /**
  @brief frame generator interface for users to generates frame.
  FrameGeneratorInterface is the virtual class to implement its own frame
@@ -39,6 +48,7 @@ class VideoFrameGeneratorInterface {
  public:
   enum VideoFrameCodec {
     I420,
+    NV12,
     VP8,
     H264,
   };
@@ -75,6 +85,10 @@ class VideoFrameGeneratorInterface {
    @brief This function gets the video frame type of video frame generator.
    */
   virtual VideoFrameCodec GetType() = 0;
+
+  // pass the receiver to who will send video frames
+  virtual void SetFrameReceiver(VideoFrameReceiverInterface* receiver) = 0;
+
   /**
    @brief This function can perform any cleanup that must be done on the same
    thread as GenerateNextFrame(). Default implementation provided for backwards
@@ -82,6 +96,22 @@ class VideoFrameGeneratorInterface {
    */
   virtual void Cleanup() {}
 };
+
+class VideoFrameFeeder : public VideoFrameGeneratorInterface {
+ public:
+  virtual uint32_t GenerateNextFrame(uint8_t* buffer,
+                                     const uint32_t capacity) override {
+    return 0;
+  }
+  virtual uint32_t GetNextFrameSize() override { return 0; }
+  virtual int GetHeight() override { return 1920; }
+  virtual int GetWidth() override { return 1080; }
+  virtual int GetFps() override { return 30; }
+  virtual VideoFrameCodec GetType() override {
+    return VideoFrameGeneratorInterface::VideoFrameCodec::NV12;
+  }
+};
+
 }  // namespace base
 }  // namespace owt
 #endif  // OWT_BASE_FRAMEGENERATORINTERFACE_H_

@@ -10,6 +10,7 @@
 #include <memory>
 #endif
 #include "api/video/i420_buffer.h"
+#include "api/video/nv12_buffer.h"
 #include "api/video/video_frame.h"
 #include "api/video/video_rotation.h"
 #include "api/video/video_sink_interface.h"
@@ -33,7 +34,8 @@ namespace owt {
 namespace base {
 
 // Simulated video capturer that periodically reads frames from a file.
-class CustomizedFramesCapturer : public webrtc::VideoCaptureModule {
+class CustomizedFramesCapturer : public webrtc::VideoCaptureModule,
+                                 public VideoFrameReceiverInterface {
  public:
   CustomizedFramesCapturer(
       std::unique_ptr<VideoFrameGeneratorInterface> rawFrameGenerator);
@@ -60,6 +62,10 @@ class CustomizedFramesCapturer : public webrtc::VideoCaptureModule {
   virtual int32_t SetCaptureRotation(webrtc::VideoRotation rotation) override;
   virtual bool SetApplyRotation(bool enable) override { return false; }
   virtual bool GetApplyRotation() override { return false; }
+
+  // feed video frame from `VideoFrameFeeder`
+  virtual void OnFrame(
+      libwebrtc::scoped_refptr<libwebrtc::RTCVideoFrame> frame) override;
 
  protected:
   // Read a frame and determine how long to wait for the next frame.
