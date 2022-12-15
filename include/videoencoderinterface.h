@@ -6,8 +6,16 @@
 #include <memory>
 #include <vector>
 #include "commontypes.h"
+#include "rtc_video_frame.h"
 namespace owt {
 namespace base {
+// `owt::base::CustomizedFramesCapturer` impls this interface
+class VideoPacketReceiverInterface {
+ public:
+  virtual void OnPacket(
+      libwebrtc::scoped_refptr<libwebrtc::RTCVideoFrame> frame) = 0;
+};
+
 /**
   @brief Video encoder interface
   @details Internal webrtc encoder will request from this
@@ -33,9 +41,6 @@ class VideoEncoderInterface {
                                   uint32_t fps,
                                   uint32_t bitrate_kbps,
                                   VideoCodec video_codec) = 0;
-#ifdef WEBRTC_ANDROID
-  virtual uint32_t EncodeOneFrame(bool key_frame, uint8_t** data) = 0;
-#else
   /**
    @brief Retrieve byte buffer from encoder that holds one complete frame.
    @details The buffer is provided by caller and EncodedOneFrame implementation
@@ -49,7 +54,7 @@ class VideoEncoderInterface {
    false if the encoder fails to encode one frame.
    */
   virtual bool EncodeOneFrame(std::vector<uint8_t>& buffer, bool key_frame) = 0;
-#endif
+
   /**
    @brief Release the resources that current encoder holds.
    @return Return true if successfully released the encoder; return false if
@@ -61,7 +66,26 @@ class VideoEncoderInterface {
    @return The newly created VideoEncoderInterface instance.
    */
   virtual VideoEncoderInterface* Copy() = 0;
+
+  // pass the receiver to whom will send video buffer
+  virtual void SetBufferReceiver(VideoPacketReceiverInterface* receiver) = 0;
 };
+
+class VideoPacketFeeder : public VideoEncoderInterface {
+  virtual bool InitEncoderContext(Resolution& resolution,
+                                  uint32_t fps,
+                                  uint32_t bitrate_kbps,
+                                  VideoCodec video_codec) override {
+    return true;
+  }
+  virtual bool EncodeOneFrame(std::vector<uint8_t>& buffer,
+                              bool key_frame) override {
+    return true;
+  }
+  virtual bool Release() override { return true; }
+  virtual VideoEncoderInterface* Copy() override { return nullptr; }
+};
+
 }  // namespace base
 }  // namespace owt
 #endif  // OWT_BASE_VIDEOENCODERINTERFACE_H_

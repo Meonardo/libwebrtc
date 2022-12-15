@@ -2,7 +2,7 @@
 #define LIB_WEBRTC_MEDIA_SESSION_FACTORY_IMPL_HXX
 
 #include "rtc_audio_device_impl.h"
-#ifdef RTC_DESKTOP_DEVICE 
+#ifdef RTC_DESKTOP_DEVICE
 #include "rtc_desktop_device_impl.h"
 #endif
 #include "rtc_peerconnection.h"
@@ -48,7 +48,7 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
       scoped_refptr<RTCVideoCapturer> capturer,
       const string video_source_label,
       scoped_refptr<RTCMediaConstraints> constraints) override;
-#ifdef RTC_DESKTOP_DEVICE 
+#ifdef RTC_DESKTOP_DEVICE
   virtual scoped_refptr<RTCVideoSource> CreateDesktopSource(
       scoped_refptr<RTCDesktopCapturer> capturer,
       const string video_source_label,
@@ -64,8 +64,13 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
       scoped_refptr<RTCVideoSource> source,
       const string track_id) override;
 
+  // customized raw video frame track
   virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(
       std::unique_ptr<owt::base::VideoFrameGeneratorInterface> v_frame_genrator,
+      const string track_id) override;
+  // customized encoded video packet track
+  virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(
+      owt::base::VideoEncoderInterface* encoder,
       const string track_id) override;
 
   virtual scoped_refptr<RTCMediaStream> CreateStream(
@@ -93,7 +98,7 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
   scoped_refptr<RTCVideoSource> CreateVideoSource_d(
       scoped_refptr<RTCDesktopCapturer> capturer,
       const char* video_source_label,
-      scoped_refptr<RTCMediaConstraints> constraints);    
+      scoped_refptr<RTCMediaConstraints> constraints);
 
  private:
   rtc::Thread* worker_thread_ = nullptr;
@@ -104,7 +109,7 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
   rtc::scoped_refptr<webrtc::AudioDeviceModule> audio_device_module_;
   scoped_refptr<AudioDeviceImpl> audio_device_impl_;
   scoped_refptr<RTCVideoDeviceImpl> video_device_impl_;
-#ifdef RTC_DESKTOP_DEVICE   
+#ifdef RTC_DESKTOP_DEVICE
   scoped_refptr<RTCDesktopDeviceImpl> desktop_device_impl_;
 #endif
   std::list<scoped_refptr<RTCPeerConnection>> peerconnections_;

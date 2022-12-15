@@ -86,7 +86,7 @@ class VideoFrameGeneratorInterface {
    */
   virtual VideoFrameCodec GetType() = 0;
 
-  // pass the receiver to who will send video frames
+  // pass the receiver to whom will send video frames
   virtual void SetFrameReceiver(VideoFrameReceiverInterface* receiver) = 0;
 
   /**

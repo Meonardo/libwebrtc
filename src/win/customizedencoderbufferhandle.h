@@ -22,21 +22,42 @@ class CustomizedEncoderBufferHandle {
   uint32_t bitrate_kbps;
   virtual ~CustomizedEncoderBufferHandle() {}
 };
+
 class EncodedFrameBuffer : public VideoFrameBuffer {
  public:
   EncodedFrameBuffer(CustomizedEncoderBufferHandle* native_handle)
-      : native_handle_(native_handle) {
+      : native_handle_(native_handle), buffer_(nullptr) {
     if (native_handle) {
       width_ = native_handle->width;
       height_ = native_handle->height;
     }
   }
+
+  /// @brief init a encoded video packet
+  /// @param data Packet data
+  /// @param size Packet size
+  /// @param keyframe Is a keyframe
+  /// @param w Video frame width
+  /// @param h Video frame height
+  EncodedFrameBuffer(uint8_t* data,
+                     size_t size,
+                     bool keyframe,
+                     size_t w,
+                     size_t h)
+      : native_handle_(nullptr),
+        width_(w),
+        height_(h),
+        size_(size),
+        buffer_(data),
+        keyframe_(keyframe) {}
+
   virtual ~EncodedFrameBuffer() {
     if (native_handle_) {
       delete native_handle_;
       native_handle_ = nullptr;
     }
   }
+
   Type type() const override { return Type::kNative; }
   int width() const override { return width_; }
   int height() const override { return height_; }
@@ -46,10 +67,18 @@ class EncodedFrameBuffer : public VideoFrameBuffer {
   }
   void* native_handle() { return native_handle_; }
 
+  // encoded frame info
+  uint8_t* buffer() const { return buffer_; }
+  bool keyframe() const { return keyframe_; }
+  size_t buffer_size() const { return size_; }
+
  private:
   CustomizedEncoderBufferHandle* native_handle_;
   size_t width_ = 0;
   size_t height_ = 0;
+  size_t size_;
+  uint8_t* buffer_;
+  bool keyframe_ = false;
 };
 }  // namespace base
 }  // namespace owt

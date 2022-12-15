@@ -22,6 +22,10 @@ VideoFrameBufferImpl::VideoFrameBufferImpl(
     rtc::scoped_refptr<webrtc::NV12Buffer> frame_buffer)
     : buffer_(frame_buffer) {}
 
+VideoFrameBufferImpl::VideoFrameBufferImpl(
+    rtc::scoped_refptr<owt::base::EncodedFrameBuffer> encoded_buffer)
+    : buffer_(encoded_buffer) {}
+
 VideoFrameBufferImpl::~VideoFrameBufferImpl() {}
 
 scoped_refptr<RTCVideoFrame> VideoFrameBufferImpl::Copy() {
@@ -216,6 +220,21 @@ scoped_refptr<RTCVideoFrame> RTCVideoFrame::Create(int width,
   scoped_refptr<VideoFrameBufferImpl> frame =
       scoped_refptr<VideoFrameBufferImpl>(
           new RefCountedObject<VideoFrameBufferImpl>(nv12_buffer));
+  return frame;
+}
+
+scoped_refptr<RTCVideoFrame> RTCVideoFrame::Create(uint8_t* data,
+                                                   size_t size,
+                                                   bool keyframe,
+                                                   size_t w,
+                                                   size_t h) {
+  rtc::scoped_refptr<owt::base::EncodedFrameBuffer> encoded_buffer =
+      new rtc::RefCountedObject<owt::base::EncodedFrameBuffer>(data, size,
+                                                               keyframe, w, h);
+
+  scoped_refptr<VideoFrameBufferImpl> frame =
+      scoped_refptr<VideoFrameBufferImpl>(
+          new RefCountedObject<VideoFrameBufferImpl>(encoded_buffer));
   return frame;
 }
 

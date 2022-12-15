@@ -3,6 +3,7 @@
 
 #include "rtc_types.h"
 
+#include "framegeneratorinterface.h"
 #include "rtc_audio_source.h"
 #include "rtc_audio_track.h"
 #include "rtc_desktop_device.h"
@@ -11,7 +12,7 @@
 #include "rtc_video_device.h"
 #include "rtc_video_renderer.h"
 #include "rtc_video_source.h"
-#include "framegeneratorinterface.h"
+#include "videoencoderinterface.h"
 
 namespace libwebrtc {
 
@@ -23,11 +24,15 @@ class GlobalConfiguration {
  public:
   LIB_WEBRTC_API static void SetVideoHardwareAccelerationEnabled(bool enabled);
   LIB_WEBRTC_API static bool GetVideoHardwareAccelerationEnabled();
+  LIB_WEBRTC_API static void SetCustomizedVideoEncoderEnabled(bool enabled);
+  LIB_WEBRTC_API static bool GetCustomizedVideoEncoderEnabled();
 };
 
 class VideoFrameSizeChangeObserver {
  public:
-  virtual void OnVideoFrameSizeChanged(HWND hwnd, uint16_t width, uint16_t height) = 0;
+  virtual void OnVideoFrameSizeChanged(HWND hwnd,
+                                       uint16_t width,
+                                       uint16_t height) = 0;
 };
 
 class RTCPeerConnectionFactory : public RefCountInterface {
@@ -69,8 +74,13 @@ class RTCPeerConnectionFactory : public RefCountInterface {
       scoped_refptr<RTCVideoSource> source,
       const string track_id) = 0;
 
+  // customized raw video frame track
   virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(
       std::unique_ptr<owt::base::VideoFrameGeneratorInterface> v_frame_genrator,
+      const string track_id) = 0;
+  // customized encoded video packet track
+  virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(
+      owt::base::VideoEncoderInterface* encoder,
       const string track_id) = 0;
 
   virtual scoped_refptr<RTCMediaStream> CreateStream(

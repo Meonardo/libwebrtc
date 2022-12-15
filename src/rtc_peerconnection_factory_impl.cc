@@ -12,15 +12,16 @@
 #include "api/media_stream_interface.h"
 #include "api/video_codecs/builtin_video_decoder_factory.h"
 #include "api/video_codecs/builtin_video_encoder_factory.h"
-//#include "modules/audio_device/audio_device_impl.h"
+// #include "modules/audio_device/audio_device_impl.h"
 
 #include "modules/audio_device/include/audio_device_factory.h"
 
+#include "src/win/customizedframescapturer.h"
+#include "src/win/customizedvideosource.h"
 #include "src/win/mediacapabilities.h"
 #include "src/win/msdkvideodecoderfactory.h"
 #include "src/win/msdkvideoencoderfactory.h"
-#include "src/win/customizedvideosource.h"
-#include "src/win/customizedframescapturer.h"
+#include "src/win/encodedvideoencoderfactory.h"
 
 #if defined(WEBRTC_IOS)
 #include "engine/sdk/objc/Framework/Classes/videotoolboxvideocodecfactory.h"
@@ -30,12 +31,27 @@
 namespace libwebrtc {
 
 static bool hardware_acceleration_enabled_;
+static bool customized_video_encoder_enabled_;
 
 void GlobalConfiguration::SetVideoHardwareAccelerationEnabled(bool enabled) {
   hardware_acceleration_enabled_ = enabled;
 }
 bool GlobalConfiguration::GetVideoHardwareAccelerationEnabled() {
   return hardware_acceleration_enabled_;
+}
+
+void GlobalConfiguration::SetCustomizedVideoEncoderEnabled(bool enabled) {
+  customized_video_encoder_enabled_ = enabled;
+}
+bool GlobalConfiguration::GetCustomizedVideoEncoderEnabled() {
+  return customized_video_encoder_enabled_;
+}
+
+std::unique_ptr<webrtc::VideoEncoderFactory> CreateCustomVideoEncoderFactory() {
+  if (!owt::base::MediaCapabilities::Get()) {
+    return webrtc::CreateBuiltinVideoEncoderFactory();
+  }
+  return std::make_unique<owt::base::EncodedVideoEncoderFactory>();
 }
 
 std::unique_ptr<webrtc::VideoEncoderFactory> CreateIntelVideoEncoderFactory() {
@@ -70,7 +86,15 @@ bool RTCPeerConnectionFactoryImpl::Initialize() {
   }
 
   if (!rtc_peerconnection_factory_) {
-    if (GlobalConfiguration::GetVideoHardwareAccelerationEnabled()) {
+    if (GlobalConfiguration::GetCustomizedVideoEncoderEnabled()) {
+      rtc_peerconnection_factory_ = webrtc::CreatePeerConnectionFactory(
+          network_thread_, worker_thread_, signaling_thread_,
+          audio_device_module_.get(),
+          webrtc::CreateBuiltinAudioEncoderFactory(),
+          webrtc::CreateBuiltinAudioDecoderFactory(),
+          CreateCustomVideoEncoderFactory(), CreateIntelVideoDecoderFactory(),
+          nullptr, nullptr);
+    } else if (GlobalConfiguration::GetVideoHardwareAccelerationEnabled()) {
       rtc_peerconnection_factory_ = webrtc::CreatePeerConnectionFactory(
           network_thread_, worker_thread_, signaling_thread_,
           audio_device_module_.get(),
@@ -303,10 +327,29 @@ scoped_refptr<RTCVideoTrack> RTCPeerConnectionFactoryImpl::CreateVideoTrack(
 }
 
 scoped_refptr<RTCVideoTrack> RTCPeerConnectionFactoryImpl::CreateVideoTrack(
-  std::unique_ptr<owt::base::VideoFrameGeneratorInterface> video_frame_genrator,
-  const string track_id) {
+    std::unique_ptr<owt::base::VideoFrameGeneratorInterface>
+        video_frame_genrator,
+    const string track_id) {
   rtc::scoped_refptr<owt::base::LocalRawCaptureTrackSource> video_device =
-      owt::base::LocalRawCaptureTrackSource::Create(std::move(video_frame_genrator));
+      owt::base::LocalRawCaptureTrackSource::Create(
+          std::move(video_frame_genrator));
+  if (video_device == nullptr)
+    return nullptr;
+
+  rtc::scoped_refptr<webrtc::VideoTrackInterface> rtc_video_track =
+      rtc_peerconnection_factory_->CreateVideoTrack(to_std_string(track_id),
+                                                    video_device.get());
+
+  scoped_refptr<VideoTrackImpl> video_track = scoped_refptr<VideoTrackImpl>(
+      new RefCountedObject<VideoTrackImpl>(rtc_video_track));
+  return video_track;
+}
+
+scoped_refptr<RTCVideoTrack> RTCPeerConnectionFactoryImpl::CreateVideoTrack(
+    owt::base::VideoEncoderInterface* encoder,
+    const string track_id) {
+  rtc::scoped_refptr<owt::base::LocalEncodedCaptureTrackSource> video_device =
+      owt::base::LocalEncodedCaptureTrackSource::Create(encoder);
   if (video_device == nullptr)
     return nullptr;
 

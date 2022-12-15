@@ -35,7 +35,8 @@ namespace base {
 
 // Simulated video capturer that periodically reads frames from a file.
 class CustomizedFramesCapturer : public webrtc::VideoCaptureModule,
-                                 public VideoFrameReceiverInterface {
+                                 public VideoFrameReceiverInterface,
+                                 public VideoPacketReceiverInterface {
  public:
   CustomizedFramesCapturer(
       std::unique_ptr<VideoFrameGeneratorInterface> rawFrameGenerator);
@@ -65,6 +66,9 @@ class CustomizedFramesCapturer : public webrtc::VideoCaptureModule,
 
   // feed video frame from `VideoFrameFeeder`
   virtual void OnFrame(
+      libwebrtc::scoped_refptr<libwebrtc::RTCVideoFrame> frame) override;
+  // feed video encoded packet from `VideoPacketFeeder`
+  virtual void OnPacket(
       libwebrtc::scoped_refptr<libwebrtc::RTCVideoFrame> frame) override;
 
  protected:

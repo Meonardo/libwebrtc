@@ -2,6 +2,7 @@
 #define LIB_WEBRTC_VIDEO_FRAME_IMPL_HXX
 
 #include "rtc_video_frame.h"
+#include "src/win/customizedencoderbufferhandle.h"
 
 #include "api/video/i420_buffer.h"
 #include "api/video/nv12_buffer.h"
@@ -18,6 +19,9 @@ class VideoFrameBufferImpl : public RTCVideoFrame {
   VideoFrameBufferImpl(rtc::scoped_refptr<webrtc::I420Buffer> frame_buffer);
   // create nv12 frame
   VideoFrameBufferImpl(rtc::scoped_refptr<webrtc::NV12Buffer> frame_buffer);
+  // create encoded frame
+  VideoFrameBufferImpl(
+      rtc::scoped_refptr<owt::base::EncodedFrameBuffer> encoded_buffer);
 
   virtual ~VideoFrameBufferImpl();
 

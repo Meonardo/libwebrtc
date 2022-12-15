@@ -102,14 +102,23 @@ CustomizedFramesCapturer::CustomizedFramesCapturer(
       fps_(fps),
       bitrate_kbps_(bitrate_kbps),
       frame_buffer_capacity_(0),
-      frame_buffer_(nullptr) {}
+      frame_buffer_(nullptr) {
+  encoder_->SetBufferReceiver(this);
+}
+
 CustomizedFramesCapturer::~CustomizedFramesCapturer() {
   DeRegisterCaptureDataCallback();
   StopCapture();
-  frame_generator_.reset(nullptr);
+
+  if (frame_generator_) {
+    frame_generator_->SetFrameReceiver(nullptr);
+    frame_generator_.reset(nullptr);
+  }
+  
   // Encoder is created by app. And needs to be freed by
   // application. mark it to nullptr to avoid ReadFrame
   // passing native buffer to stack.
+  encoder_->SetBufferReceiver(nullptr);
   encoder_ = nullptr;
 }
 
@@ -276,6 +285,23 @@ void CustomizedFramesCapturer::OnFrame(
 
   capture_frame.set_ntp_time_ms(0);
   data_callback_->OnFrame(capture_frame);
+}
+
+void CustomizedFramesCapturer::OnPacket(
+    libwebrtc::scoped_refptr<libwebrtc::RTCVideoFrame> frame) {
+  auto frame_impl =
+      reinterpret_cast<libwebrtc::VideoFrameBufferImpl*>(frame.get());
+
+  webrtc::VideoFrame encoded_frame =
+      webrtc::VideoFrame::Builder()
+          .set_video_frame_buffer(frame_impl->buffer())
+          .set_timestamp_rtp(0)
+          .set_timestamp_ms(rtc::TimeMillis())
+          .set_rotation(webrtc::kVideoRotation_0)
+          .build();
+
+  encoded_frame.set_ntp_time_ms(0);
+  data_callback_->OnFrame(encoded_frame);
 }
 
 }  // namespace base
