@@ -26,7 +26,7 @@ using namespace cricket;
 class CustomizedVideoCapturerFactory {
  public:
   static rtc::scoped_refptr<webrtc::VideoCaptureModule> Create(
-      std::unique_ptr<VideoFrameGeneratorInterface> framer);
+      VideoFrameGeneratorInterface* framer);
   static rtc::scoped_refptr<webrtc::VideoCaptureModule> Create(
       VideoEncoderInterface* encoder);
 };
@@ -56,8 +56,7 @@ class CustomizedVideoSource
 class CustomizedCapturer : public CustomizedVideoSource,
                            public rtc::VideoSinkInterface<webrtc::VideoFrame> {
  public:
-  static CustomizedCapturer* Create(
-      std::unique_ptr<VideoFrameGeneratorInterface> framer);
+  static CustomizedCapturer* Create(VideoFrameGeneratorInterface* framer);
   static CustomizedCapturer* Create(VideoEncoderInterface* encoder);
 
   virtual ~CustomizedCapturer();
@@ -67,7 +66,7 @@ class CustomizedCapturer : public CustomizedVideoSource,
 
  private:
   CustomizedCapturer();
-  bool Init(std::unique_ptr<VideoFrameGeneratorInterface> framer);
+  bool Init(VideoFrameGeneratorInterface* framer);
   bool Init(VideoEncoderInterface* encoder);
 
   void Destroy();
@@ -80,7 +79,7 @@ class CustomizedCapturer : public CustomizedVideoSource,
 class LocalRawCaptureTrackSource : public webrtc::VideoTrackSource {
  public:
   static rtc::scoped_refptr<LocalRawCaptureTrackSource> Create(
-      std::unique_ptr<VideoFrameGeneratorInterface> framer) {
+      VideoFrameGeneratorInterface* framer) {
     std::unique_ptr<CustomizedCapturer> capturer;
     capturer = absl::WrapUnique(CustomizedCapturer::Create(std::move(framer)));
 

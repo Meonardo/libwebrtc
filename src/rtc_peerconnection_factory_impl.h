@@ -66,7 +66,7 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
 
   // customized raw video frame track
   virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(
-      std::unique_ptr<owt::base::VideoFrameGeneratorInterface> v_frame_genrator,
+      owt::base::VideoFrameGeneratorInterface* v_frame_genrator,
       const string track_id) override;
   // customized encoded video packet track
   virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(

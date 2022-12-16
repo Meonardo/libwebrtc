@@ -76,8 +76,8 @@ class CustomizedFramesCapturer::CustomizedFramesThread
 // Implementation of class CustomizedFramesCapturer.
 /////////////////////////////////////////////////////////////////////
 CustomizedFramesCapturer::CustomizedFramesCapturer(
-    std::unique_ptr<VideoFrameGeneratorInterface> raw_frameGenerator)
-    : frame_generator_(std::move(raw_frameGenerator)),
+    VideoFrameGeneratorInterface* raw_frameGenerator)
+    : frame_generator_(raw_frameGenerator),
       encoder_(nullptr),
       width_(frame_generator_->GetWidth()),
       height_(frame_generator_->GetHeight()),
@@ -112,9 +112,8 @@ CustomizedFramesCapturer::~CustomizedFramesCapturer() {
 
   if (frame_generator_) {
     frame_generator_->SetFrameReceiver(nullptr);
-    frame_generator_.reset(nullptr);
   }
-  
+
   // Encoder is created by app. And needs to be freed by
   // application. mark it to nullptr to avoid ReadFrame
   // passing native buffer to stack.

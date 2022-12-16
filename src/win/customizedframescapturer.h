@@ -38,8 +38,7 @@ class CustomizedFramesCapturer : public webrtc::VideoCaptureModule,
                                  public VideoFrameReceiverInterface,
                                  public VideoPacketReceiverInterface {
  public:
-  CustomizedFramesCapturer(
-      std::unique_ptr<VideoFrameGeneratorInterface> rawFrameGenerator);
+  CustomizedFramesCapturer(VideoFrameGeneratorInterface* rawFrameGenerator);
   CustomizedFramesCapturer(int width,
                            int height,
                            int fps,

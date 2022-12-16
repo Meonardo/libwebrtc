@@ -9,9 +9,8 @@ namespace owt {
 namespace base {
 
 rtc::scoped_refptr<webrtc::VideoCaptureModule>
-CustomizedVideoCapturerFactory::Create(
-    std::unique_ptr<VideoFrameGeneratorInterface> framer) {
-  return new rtc::RefCountedObject<CustomizedFramesCapturer>(std::move(framer));
+CustomizedVideoCapturerFactory::Create(VideoFrameGeneratorInterface* framer) {
+  return new rtc::RefCountedObject<CustomizedFramesCapturer>(framer);
 }
 
 rtc::scoped_refptr<webrtc::VideoCaptureModule>
@@ -58,9 +57,9 @@ void CustomizedVideoSource::UpdateVideoAdapter() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 CustomizedCapturer* CustomizedCapturer::Create(
-    std::unique_ptr<VideoFrameGeneratorInterface> framer) {
+    VideoFrameGeneratorInterface* framer) {
   std::unique_ptr<CustomizedCapturer> vcm_capturer(new CustomizedCapturer());
-  if (!vcm_capturer->Init(std::move(framer)))
+  if (!vcm_capturer->Init(framer))
     return nullptr;
   return vcm_capturer.release();
 }
@@ -74,9 +73,8 @@ CustomizedCapturer* CustomizedCapturer::Create(VideoEncoderInterface* encoder) {
 
 CustomizedCapturer::CustomizedCapturer() : vcm_(nullptr) {}
 
-bool CustomizedCapturer::Init(
-    std::unique_ptr<VideoFrameGeneratorInterface> framer) {
-  vcm_ = CustomizedVideoCapturerFactory::Create(std::move(framer));
+bool CustomizedCapturer::Init(VideoFrameGeneratorInterface* framer) {
+  vcm_ = CustomizedVideoCapturerFactory::Create(framer);
 
   if (!vcm_)
     return false;
