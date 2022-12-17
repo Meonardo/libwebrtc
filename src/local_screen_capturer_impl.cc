@@ -1,4 +1,5 @@
 #include "src/local_screen_capturer_impl.h"
+#include "src/win/msdkvideoencoder.h"
 
 namespace libwebrtc {
 // static method
@@ -25,7 +26,7 @@ LocalScreenCapturerImpl::LocalScreenCapturerImpl(
     webrtc::VideoCaptureCapability capability,
     LocalDesktopCapturerObserver* observer,
     bool cursor_enabled)
-    : capability_(capability) {
+    : capability_(capability), encoder_(nullptr), encoder_initialized_(false) {
   capturer_ = new rtc::RefCountedObject<owt::base::BasicScreenCapturer>(
       options, observer, cursor_enabled);
 }
@@ -57,6 +58,60 @@ bool LocalScreenCapturerImpl::StopCapturing() {
   return true;
 }
 
-void LocalScreenCapturerImpl::OnFrame(const webrtc::VideoFrame& frame) {}
+void LocalScreenCapturerImpl::OnFrame(const webrtc::VideoFrame& frame) {
+  if (encoder_ == nullptr) {
+    encoder_initialized_ = InitEncoder(frame.width(), frame.height());
+  }
+  if (encoder_initialized_) {
+    encoder_->Encode(frame, nullptr);
+  }
+}
+
+bool LocalScreenCapturerImpl::InitEncoder(int width, int height) {
+  // these settings now are const
+  cricket::VideoCodec format = {0, "H264"};
+  format.clockrate = 9000;
+  format.SetParam("level-asymmetry-allowed", "1");
+  format.SetParam("packetization-mode", "1");
+  format.SetParam("profile-level-id", "42e01f");
+  encoder_ = owt::base::MSDKVideoEncoder::Create(format);
+
+  webrtc::VideoCodec codec;
+  codec.maxFramerate = 30;
+  codec.startBitrate = 2000;
+  codec.minBitrate = 2000;
+  codec.maxBitrate = 4000;
+  codec.width = width;
+  codec.height = height;
+  codec.codecType = webrtc::PayloadStringToCodecType(format.name);
+
+  // init encoder
+  if (encoder_->InitEncode(&codec, 0, 1200) != 0) {
+    RTC_LOG(LS_ERROR) << "Failed to initialize the encoder associated with "
+                         "codec type: "
+                      << CodecTypeToPayloadString(codec.codecType) << " ("
+                      << codec.codecType << ")";
+    ReleaseEncoder();
+    return false;
+  }
+
+  encoder_->RegisterEncodeCompleteCallback(this);
+  return true;
+}
+
+void LocalScreenCapturerImpl::ReleaseEncoder() {
+  if (!encoder_ || !encoder_initialized_) {
+    return;
+  }
+  encoder_->Release();
+  encoder_initialized_ = false;
+  RTC_LOG(LS_ERROR) << "Encoder released";
+}
+
+webrtc::EncodedImageCallback::Result LocalScreenCapturerImpl::OnEncodedImage(
+    const webrtc::EncodedImage& encoded_image,
+    const webrtc::CodecSpecificInfo* codec_specific_info) {
+  return Result(Result::Error::OK);
+}
 
 }  // namespace libwebrtc
