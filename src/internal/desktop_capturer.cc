@@ -4,11 +4,11 @@ namespace webrtc {
 namespace internal {
 
 LocalDesktopCapturer* LocalDesktopCapturer::Create(
-    std::shared_ptr<libwebrtc::LocalDesktopStreamParameters> parameters,
-    std::unique_ptr<libwebrtc::LocalDesktopStreamObserver> observer) {
+    std::shared_ptr<libwebrtc::LocalDesktopCapturerParameters> parameters,
+    libwebrtc::LocalDesktopCapturerObserver* observer) {
   std::unique_ptr<LocalDesktopCapturer> vcm_capturer(
       new LocalDesktopCapturer());
-  if (!vcm_capturer->Init(parameters, std::move(observer)))
+  if (!vcm_capturer->Init(parameters, observer))
     return nullptr;
   return vcm_capturer.release();
 }
@@ -16,19 +16,18 @@ LocalDesktopCapturer* LocalDesktopCapturer::Create(
 LocalDesktopCapturer::LocalDesktopCapturer() : vcm_(nullptr) {}
 
 bool LocalDesktopCapturer::Init(
-    std::shared_ptr<libwebrtc::LocalDesktopStreamParameters> parameters,
-    std::unique_ptr<libwebrtc::LocalDesktopStreamObserver> observer) {
-
+    std::shared_ptr<libwebrtc::LocalDesktopCapturerParameters> parameters,
+    libwebrtc::LocalDesktopCapturerObserver* observer) {
   webrtc::DesktopCaptureOptions options =
       webrtc::DesktopCaptureOptions::CreateDefault();
   options.set_allow_directx_capturer(true);
-  if (parameters->SourceType() == libwebrtc::LocalDesktopStreamParameters::
+  if (parameters->SourceType() == libwebrtc::LocalDesktopCapturerParameters::
                                       DesktopSourceType::kApplication) {
     vcm_ = new rtc::RefCountedObject<owt::base::BasicWindowCapturer>(
-        options, std::move(observer), parameters->CursorEnabled());
+        options, observer, parameters->CursorEnabled());
   } else {
     vcm_ = new rtc::RefCountedObject<owt::base::BasicScreenCapturer>(
-        options, std::move(observer), parameters->CursorEnabled());
+        options, observer, parameters->CursorEnabled());
   }
 
   if (!vcm_)

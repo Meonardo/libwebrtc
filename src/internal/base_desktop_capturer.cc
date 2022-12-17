@@ -31,7 +31,9 @@ namespace base {
 // Definition of private class BasicScreenCaptureThread that periodically
 // generates frames.
 ///////////////////////////////////////////////////////////////////////
-class BasicScreenCapturer::BasicScreenCaptureThread : public rtc::Thread, public rtc::MessageHandler {
+class BasicScreenCapturer::BasicScreenCaptureThread
+    : public rtc::Thread,
+      public rtc::MessageHandler {
  public:
   explicit BasicScreenCaptureThread(BasicScreenCapturer* capturer)
       : rtc::Thread(rtc::CreateDefaultSocketServer()),
@@ -68,6 +70,7 @@ class BasicScreenCapturer::BasicScreenCaptureThread : public rtc::Thread, public
     webrtc::MutexLock lock(&mutex_);
     return finished_;
   }
+
  private:
   BasicScreenCapturer* capturer_;
   mutable webrtc::Mutex mutex_;
@@ -80,16 +83,15 @@ class BasicScreenCapturer::BasicScreenCaptureThread : public rtc::Thread, public
 /////////////////////////////////////////////////////////////////////
 BasicScreenCapturer::BasicScreenCapturer(
     webrtc::DesktopCaptureOptions options,
-    std::unique_ptr<libwebrtc::LocalDesktopStreamObserver> observer,
+    libwebrtc::LocalDesktopCapturerObserver* observer,
     bool cursor_enabled)
     : screen_capture_thread_(nullptr),
       width_(0),
       height_(0),
-      cursor_enabled_(cursor_enabled),
       frame_buffer_capacity_(0),
       frame_buffer_(nullptr),
-      observer_(std::move(observer)),
-      screen_capture_options_(options) {
+      screen_capture_options_(options),
+      observer_(observer) {
   if (cursor_enabled) {
     std::unique_ptr<webrtc::DesktopCapturer> capturer(
         webrtc::DesktopCapturer::CreateScreenCapturer(screen_capture_options_));
@@ -113,7 +115,8 @@ int32_t BasicScreenCapturer::StartCapture(
     return 0;
   }
   if (!screen_capturer_.get()) {
-    RTC_LOG(LS_ERROR) << "Desktop capturer creation failed, not able to start it";
+    RTC_LOG(LS_ERROR)
+        << "Desktop capturer creation failed, not able to start it";
     return -1;
   }
 
@@ -260,7 +263,7 @@ bool BasicScreenCapturer::GetCurrentScreenList(libwebrtc::SourceList& list) {
   for (const auto& screen : sources) {
     RTC_LOG(INFO) << " id:" << screen.id << " title:" << screen.title;
     sources_.push_back({std::to_string(screen.id), screen.title,
-                    libwebrtc::SourceType::kEntireScreen});
+                        libwebrtc::SourceType::kEntireScreen});
   }
   list = sources_;
   return true;
@@ -293,11 +296,10 @@ ScreenCaptureThread::~ScreenCaptureThread() {
 }
 BasicWindowCapturer::BasicWindowCapturer(
     webrtc::DesktopCaptureOptions options,
-    std::unique_ptr<libwebrtc::LocalDesktopStreamObserver> observer,
+    libwebrtc::LocalDesktopCapturerObserver* observer,
     bool cursor_enabled)
     : width_(0),
       height_(0),
-      cursor_enabled_(cursor_enabled),
       frame_buffer_capacity_(0),
       frame_buffer_(nullptr),
       window_capture_options_(options),
@@ -307,7 +309,7 @@ BasicWindowCapturer::BasicWindowCapturer(
       need_sleep_ms_(0),
       real_sleep_ms_(0),
       stopped_(false),
-      observer_(std::move(observer)) {
+      observer_(observer) {
   if (cursor_enabled) {
     std::unique_ptr<webrtc::DesktopCapturer> capturer(
         webrtc::DesktopCapturer::CreateWindowCapturer(window_capture_options_));
@@ -361,10 +363,11 @@ bool BasicWindowCapturer::CaptureThreadProcess() {
 
 void BasicWindowCapturer::InitOnWorkerThread() {
   if (!capture_thread_) {
-    //capture_thread_.reset(new rtc::PlatformThread(WindowCaptureThreadFunc, this,
-    //                                              "WindowCaptureThread",
-    //                                              rtc::kHighPriority));
-    //capture_thread_->Start();
+    // capture_thread_.reset(new rtc::PlatformThread(WindowCaptureThreadFunc,
+    // this,
+    //                                               "WindowCaptureThread",
+    //                                               rtc::kHighPriority));
+    // capture_thread_->Start();
 
     rtc::ThreadAttributes attr;
     attr.SetPriority(rtc::ThreadPriority::kHigh);
@@ -390,8 +393,9 @@ int32_t BasicWindowCapturer::StartCapture(
 
   capture_started_ = true;
 
- /* worker_thread_->Invoke<void>(
-      RTC_FROM_HERE, rtc::Bind(&BasicWindowCapturer::InitOnWorkerThread, this));*/
+  /* worker_thread_->Invoke<void>(
+       RTC_FROM_HERE, rtc::Bind(&BasicWindowCapturer::InitOnWorkerThread,
+     this));*/
 
   worker_thread_->Invoke<void>(RTC_FROM_HERE, [this] { InitOnWorkerThread(); });
 
@@ -468,7 +472,7 @@ bool BasicWindowCapturer::GetCurrentWindowList(libwebrtc::SourceList& list) {
   for (const auto& screen : sources) {
     RTC_LOG(INFO) << " id:" << screen.id << " title:" << screen.title;
     sources_.push_back({std::to_string(screen.id), screen.title,
-                    libwebrtc::SourceType::kWindow});
+                        libwebrtc::SourceType::kWindow});
   }
   list = sources_;
 

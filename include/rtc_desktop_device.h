@@ -8,7 +8,7 @@
 
 namespace libwebrtc {
 
-class LocalDesktopStreamObserver {
+class LocalDesktopCapturerObserver {
  public:
   /**
   @brief Event callback for local screen stream to request for a source from
@@ -18,8 +18,9 @@ class LocalDesktopStreamObserver {
   @param window_list list of windows/screen's (id, title) pair.
   @param dest_window application will set this id to be used by it.
   */
-  virtual void OnCaptureSourceNeeded(const SourceList& sources, int& dest_source) {}
-  virtual ~LocalDesktopStreamObserver() {}
+  virtual void OnCaptureSourceNeeded(const SourceList& sources,
+                                     int& dest_source) {}
+  virtual ~LocalDesktopCapturerObserver() {}
 };
 
 /**
@@ -28,7 +29,7 @@ local stream with certain screen or window as source.
 When a stream is created, it will not be impacted if these parameters are
 changed.
 */
-class LocalDesktopStreamParameters final {
+class LocalDesktopCapturerParameters final {
  public:
   enum class DesktopCapturePolicy : int {
     /// Default capture policy.
@@ -52,23 +53,23 @@ class LocalDesktopStreamParameters final {
     kApplication
   };
   /**
-  @brief Initialize a LocalDesktopStreamParameters.
+  @brief Initialize a LocalDesktopCapturerParameters.
   @param audio_enabled Indicates if audio is enabled for this stream.
   @param video_anabled Indicates if video is enabled for this stream.
   @param soruce_type Indicates if capture from screen or an app.
   @param capture_policy the OR of any of the DesktopCapturePolicy options.
   */
-  LocalDesktopStreamParameters(bool audio_enabled,
-                               bool video_enabled,
-                               bool cursor_enabled) : 
-      video_enabled_(video_enabled), 
-      audio_enabled_(audio_enabled),
-      cursor_enabled_(cursor_enabled),
-      fps_(30),
-      source_type_(DesktopSourceType::kFullScreen),
-      capture_policy_(DesktopCapturePolicy::kDefault) {}
+  LocalDesktopCapturerParameters(bool audio_enabled,
+                                 bool video_enabled,
+                                 bool cursor_enabled)
+      : video_enabled_(video_enabled),
+        audio_enabled_(audio_enabled),
+        cursor_enabled_(cursor_enabled),
+        fps_(30),
+        source_type_(DesktopSourceType::kFullScreen),
+        capture_policy_(DesktopCapturePolicy::kDefault) {}
 
-  ~LocalDesktopStreamParameters() {}
+  ~LocalDesktopCapturerParameters() {}
   /**
   @brief Get video is enabled or not for this stream.
   @return true or false.
@@ -123,13 +124,13 @@ class RTCDesktopCapturer : public RefCountInterface {
 class RTCDesktopDevice : public RefCountInterface {
  public:
   virtual scoped_refptr<RTCDesktopCapturer> CreateDesktopCapturer(
-      std::unique_ptr<LocalDesktopStreamObserver> source_observer,
-      std::shared_ptr<LocalDesktopStreamParameters> params) = 0;
+      LocalDesktopCapturerObserver* source_observer,
+      std::shared_ptr<LocalDesktopCapturerParameters> params) = 0;
 
  protected:
   virtual ~RTCDesktopDevice() {}
 };
 
-} // namespace libwebrtc
+}  // namespace libwebrtc
 
 #endif  // LIB_WEBRTC_RTC_VIDEO_DEVICE_HXX

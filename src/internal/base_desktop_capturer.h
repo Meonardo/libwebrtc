@@ -4,25 +4,25 @@
 #ifndef OWT_BASE_BASICSCREENCAPTURER_H_
 #define OWT_BASE_BASICSCREENCAPTURER_H_
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <memory>
 
 #include "rtc_desktop_device.h"
 
-#include "modules/video_capture/video_capture.h"
 #include "api/video/i420_buffer.h"
 #include "modules/desktop_capture/desktop_capture_options.h"
 #include "modules/desktop_capture/desktop_capturer.h"
 #include "modules/desktop_capture/desktop_frame.h"
+#include "modules/video_capture/video_capture.h"
 
+#include "rtc_base/internal/default_socket_server.h"
 #include "rtc_base/platform_thread.h"
 #include "rtc_base/stream.h"
 #include "rtc_base/string_utils.h"
 #include "rtc_base/synchronization/mutex.h"
 #include "rtc_base/thread.h"
-#include "rtc_base/internal/default_socket_server.h"
 
 #include "system_wrappers/include/clock.h"
 
@@ -31,8 +31,7 @@ namespace base {
 
 class ScreenCaptureThread : public rtc::Thread {
  public:
-  ScreenCaptureThread()
-      : rtc::Thread(rtc::CreateDefaultSocketServer()) {}
+  ScreenCaptureThread() : rtc::Thread(rtc::CreateDefaultSocketServer()) {}
   virtual void Run() override;
   ~ScreenCaptureThread() override;
 };
@@ -75,7 +74,7 @@ class BasicDesktopCapturer : public webrtc::VideoCaptureModule,
   virtual bool IsRunning() { return false; }
   virtual void OnCaptureResult(
       webrtc::DesktopCapturer::Result result,
-      std::unique_ptr<webrtc::DesktopFrame> frame) override{}
+      std::unique_ptr<webrtc::DesktopFrame> frame) override {}
   virtual bool GetCurrentWindowList(libwebrtc::SourceList& list) {
     return false;
   }
@@ -97,15 +96,16 @@ class BasicDesktopCapturer : public webrtc::VideoCaptureModule,
 // will convert it to I420 and signal stack of the frame.
 class BasicScreenCapturer : public BasicDesktopCapturer {
  public:
-  BasicScreenCapturer(webrtc::DesktopCaptureOptions options, 
-      std::unique_ptr<libwebrtc::LocalDesktopStreamObserver> observer,
+  BasicScreenCapturer(webrtc::DesktopCaptureOptions options,
+                      libwebrtc::LocalDesktopCapturerObserver* observer,
                       bool cursor_enabled);
   virtual ~BasicScreenCapturer();
   virtual int32_t StartCapture(
       const webrtc::VideoCaptureCapability& capability) override;
   virtual int32_t StopCapture() override;
   virtual bool CaptureStarted() override;
-  virtual int32_t CaptureSettings(webrtc::VideoCaptureCapability& settings) override;
+  virtual int32_t CaptureSettings(
+      webrtc::VideoCaptureCapability& settings) override;
   virtual int32_t SetCaptureRotation(webrtc::VideoRotation rotation) override;
   // Override virtual methods of parent class VideoCapturer.
   virtual bool IsRunning() override;
@@ -126,14 +126,13 @@ class BasicScreenCapturer : public BasicDesktopCapturer {
   std::unique_ptr<BasicScreenCaptureThread> screen_capture_thread_;
   int width_;
   int height_;
-  bool cursor_enabled_;
   uint32_t frame_buffer_capacity_;
   rtc::scoped_refptr<webrtc::I420Buffer>
       frame_buffer_;  // Reuseable buffer for video frames.
   std::unique_ptr<webrtc::DesktopCapturer> screen_capturer_;
   webrtc::DesktopCaptureOptions screen_capture_options_;
   bool capture_started_ = false;
-  std::unique_ptr<libwebrtc::LocalDesktopStreamObserver> observer_;
+  libwebrtc::LocalDesktopCapturerObserver* observer_;
   webrtc::Mutex lock_;
   RTC_DISALLOW_COPY_AND_ASSIGN(BasicScreenCapturer);
 };
@@ -145,7 +144,7 @@ class BasicScreenCapturer : public BasicDesktopCapturer {
 class BasicWindowCapturer : public BasicDesktopCapturer {
  public:
   BasicWindowCapturer(webrtc::DesktopCaptureOptions options,
-      std::unique_ptr<libwebrtc::LocalDesktopStreamObserver> observer,
+                      libwebrtc::LocalDesktopCapturerObserver* observer,
                       bool cursor_enabled);
   virtual ~BasicWindowCapturer();
 
@@ -155,7 +154,8 @@ class BasicWindowCapturer : public BasicDesktopCapturer {
   virtual int32_t StopCapture() override;
 
   virtual bool CaptureStarted() override;
-  virtual int32_t CaptureSettings(webrtc::VideoCaptureCapability& settings) override;
+  virtual int32_t CaptureSettings(
+      webrtc::VideoCaptureCapability& settings) override;
   virtual int32_t SetCaptureRotation(webrtc::VideoRotation rotation) override;
   virtual bool IsRunning() override;
 
@@ -183,7 +183,6 @@ class BasicWindowCapturer : public BasicDesktopCapturer {
   // BasicWindowCaptureThread* window_capture_thread_;
   int width_;
   int height_;
-  bool cursor_enabled_;
   uint32_t frame_buffer_capacity_;
   rtc::scoped_refptr<webrtc::I420Buffer>
       frame_buffer_;  // Reuseable buffer for video frames.
@@ -202,7 +201,7 @@ class BasicWindowCapturer : public BasicDesktopCapturer {
   bool capture_started_ = false;
   bool quit_;
   webrtc::Mutex lock_;
-  std::unique_ptr<libwebrtc::LocalDesktopStreamObserver> observer_;
+  libwebrtc::LocalDesktopCapturerObserver* observer_;
   RTC_DISALLOW_COPY_AND_ASSIGN(BasicWindowCapturer);
 };
 }  // namespace base
