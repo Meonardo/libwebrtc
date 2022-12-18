@@ -10,35 +10,40 @@ LocalScreenCapturer::CreateLocalScreenCapturer(
   webrtc::VideoCaptureCapability capability;
   capability.maxFPS = parameters->Fps();
   capability.videoType = webrtc::VideoType::kI420;
-  webrtc::DesktopCaptureOptions options =
-      webrtc::DesktopCaptureOptions::CreateDefault();
-  options.set_allow_directx_capturer(true);
 
   scoped_refptr<LocalScreenCapturerImpl> capturer =
       scoped_refptr<LocalScreenCapturerImpl>(
           new RefCountedObject<LocalScreenCapturerImpl>(
-              options, capability, observer, parameters->CursorEnabled()));
+              capability, observer, parameters->CursorEnabled()));
   return capturer;
 }
 
 LocalScreenCapturerImpl::LocalScreenCapturerImpl(
-    webrtc::DesktopCaptureOptions options,
     webrtc::VideoCaptureCapability capability,
     LocalDesktopCapturerObserver* observer,
     bool cursor_enabled)
-    : capability_(capability), encoder_(nullptr), encoder_initialized_(false) {
-  capturer_ = new rtc::RefCountedObject<owt::base::BasicScreenCapturer>(
-      options, observer, cursor_enabled);
-}
+    : capturer_observer_(observer),
+      capability_(capability),
+      cursor_enabled_(cursor_enabled),
+      encoder_(nullptr),
+      image_callback_(nullptr),
+      encoder_initialized_(false) {}
 
 LocalScreenCapturerImpl::~LocalScreenCapturerImpl() {
+  capturer_observer_ = nullptr;
+  image_callback_ = nullptr;
   StopCapturing();
-  capturer_ = nullptr;
+  ReleaseEncoder();
 }
 
-bool LocalScreenCapturerImpl::StartCapturing() {
+bool LocalScreenCapturerImpl::StartCapturing(
+    LocalScreenEncodedImageCallback* image_callback) {
   if (capturer_ == nullptr) {
-    return false;
+    webrtc::DesktopCaptureOptions options =
+        webrtc::DesktopCaptureOptions::CreateDefault();
+    options.set_allow_directx_capturer(true);
+    capturer_ = new rtc::RefCountedObject<owt::base::BasicScreenCapturer>(
+        options, capturer_observer_, cursor_enabled_);
   }
 
   capturer_->RegisterCaptureDataCallback(this);
@@ -46,6 +51,7 @@ bool LocalScreenCapturerImpl::StartCapturing() {
     return StopCapturing();
   }
 
+  image_callback_ = image_callback;
   return capturer_->CaptureStarted();
 }
 
@@ -53,8 +59,10 @@ bool LocalScreenCapturerImpl::StopCapturing() {
   if (capturer_ == nullptr)
     return false;
 
+  image_callback_ = nullptr;
   capturer_->StopCapture();
   capturer_->DeRegisterCaptureDataCallback();
+  capturer_ = nullptr;
   return true;
 }
 
@@ -105,12 +113,19 @@ void LocalScreenCapturerImpl::ReleaseEncoder() {
   }
   encoder_->Release();
   encoder_initialized_ = false;
+  encoder_.reset();
   RTC_LOG(LS_ERROR) << "Encoder released";
 }
 
 webrtc::EncodedImageCallback::Result LocalScreenCapturerImpl::OnEncodedImage(
     const webrtc::EncodedImage& encoded_image,
     const webrtc::CodecSpecificInfo* codec_specific_info) {
+  if (image_callback_ != nullptr) {
+    bool keyframe = codec_specific_info->codecSpecific.H264.idr_frame;
+    image_callback_->OnEncodedImage(encoded_image.data(), encoded_image.size(),
+                                    keyframe, encoded_image._encodedWidth,
+                                    encoded_image._encodedHeight);
+  }
   return Result(Result::Error::OK);
 }
 

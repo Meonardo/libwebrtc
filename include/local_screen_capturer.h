@@ -4,13 +4,23 @@
 #include "rtc_desktop_device.h"
 
 namespace libwebrtc {
+class LocalScreenEncodedImageCallback {
+ public:
+  virtual void OnEncodedImage(const uint8_t* data,
+                              size_t size,
+                              bool keyframe,
+                              size_t w,
+                              size_t h) = 0;
+};
+
 class LocalScreenCapturer : public RefCountInterface {
  public:
   LIB_WEBRTC_API static scoped_refptr<LocalScreenCapturer>
   CreateLocalScreenCapturer(LocalDesktopCapturerObserver* observer,
                             LocalDesktopCapturerParameters* parameters);
 
-  virtual bool StartCapturing() = 0;
+  virtual bool StartCapturing(
+      LocalScreenEncodedImageCallback* image_callback) = 0;
   virtual bool StopCapturing() = 0;
 
  protected:

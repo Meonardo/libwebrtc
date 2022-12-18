@@ -17,13 +17,13 @@ class LocalScreenCapturerImpl
       public rtc::VideoSinkInterface<webrtc::VideoFrame>,
       public webrtc::EncodedImageCallback {
  public:
-  LocalScreenCapturerImpl(webrtc::DesktopCaptureOptions options,
-                          webrtc::VideoCaptureCapability capability,
+  LocalScreenCapturerImpl(webrtc::VideoCaptureCapability capability,
                           LocalDesktopCapturerObserver* observer,
                           bool cursor_enabled);
   virtual ~LocalScreenCapturerImpl();
 
-  virtual bool StartCapturing() override;
+  virtual bool StartCapturing(
+      LocalScreenEncodedImageCallback* image_callback) override;
   virtual bool StopCapturing() override;
 
   void OnFrame(const webrtc::VideoFrame& frame) override;
@@ -32,9 +32,14 @@ class LocalScreenCapturerImpl
       const webrtc::CodecSpecificInfo* codec_specific_info) override;
 
  private:
+  // capturer
+  LocalDesktopCapturerObserver* capturer_observer_;
   rtc::scoped_refptr<owt::base::BasicScreenCapturer> capturer_;
   webrtc::VideoCaptureCapability capability_;
+  bool cursor_enabled_;
+  // encoder
   std::unique_ptr<owt::base::MSDKVideoEncoder> encoder_;
+  LocalScreenEncodedImageCallback* image_callback_;
   bool encoder_initialized_;
 
   bool InitEncoder(int width, int height);
