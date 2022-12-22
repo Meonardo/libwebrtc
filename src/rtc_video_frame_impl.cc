@@ -238,4 +238,15 @@ scoped_refptr<RTCVideoFrame> RTCVideoFrame::Create(uint8_t* data,
   return frame;
 }
 
+scoped_refptr<RTCVideoFrame> RTCVideoFrame::Create(void* encoded_image_hdl) {
+  // rtc::scoped_refptr<owt::base::EncodedFrameBuffer> encoded_buffer =
+  //     new rtc::RefCountedObject<owt::base::EncodedFrameBuffer>(
+  //         reinterpret_cast<owt::base::EncodedImageHandle*>(encoded_image_hdl));
+
+  // scoped_refptr<VideoFrameBufferImpl> frame =
+  //     scoped_refptr<VideoFrameBufferImpl>(
+  //         new RefCountedObject<VideoFrameBufferImpl>(encoded_buffer));
+  return nullptr;
+}
+
 }  // namespace libwebrtc

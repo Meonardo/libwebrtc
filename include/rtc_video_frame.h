@@ -43,6 +43,10 @@ class RTCVideoFrame : public RefCountInterface {
                                                             size_t w,
                                                             size_t h);
 
+  // create native frame(encoded) with a handle
+  LIB_WEBRTC_API static scoped_refptr<RTCVideoFrame> Create(
+      void* encoded_image_hdl);
+
   virtual scoped_refptr<RTCVideoFrame> Copy() = 0;
 
   virtual PixelFormat PixFormat() const = 0;

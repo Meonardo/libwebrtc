@@ -32,18 +32,23 @@ EncodedVideoEncoderFactory::CreateVideoEncoder(
 std::vector<webrtc::SdpVideoFormat>
 EncodedVideoEncoderFactory::GetSupportedFormats() const {
   std::vector<webrtc::SdpVideoFormat> supported_codecs;
-  supported_codecs.push_back(webrtc::SdpVideoFormat(cricket::kVp8CodecName));
-  for (const webrtc::SdpVideoFormat& format : webrtc::SupportedVP9Codecs())
-    supported_codecs.push_back(format);
-  // TODO: We should combine the codec profiles that hardware H.264 encoder
-  // supports with those provided by built-in H.264 encoder
-  for (const webrtc::SdpVideoFormat& format :
-       owt::base::CodecUtils::SupportedH264Codecs())
-    supported_codecs.push_back(format);
-  for (const webrtc::SdpVideoFormat& format :
-       CodecUtils::GetSupportedH265Codecs()) {
-    supported_codecs.push_back(format);
-  }
+  // supported_codecs.push_back(webrtc::SdpVideoFormat(cricket::kVp8CodecName));
+  // for (const webrtc::SdpVideoFormat& format : webrtc::SupportedVP9Codecs())
+  //   supported_codecs.push_back(format);
+  //// TODO: We should combine the codec profiles that hardware H.264 encoder
+  //// supports with those provided by built-in H.264 encoder
+  // for (const webrtc::SdpVideoFormat& format :
+  //      owt::base::CodecUtils::SupportedH264Codecs())
+  //   supported_codecs.push_back(format);
+  // for (const webrtc::SdpVideoFormat& format :
+  //      CodecUtils::GetSupportedH265Codecs()) {
+  //   supported_codecs.push_back(format);
+  // }
+
+  // NOTICE: only use h264 codec for now
+  supported_codecs.push_back(
+      owt::base::CodecUtils::GetConstrainedBaselineH264Codec());
+
   return supported_codecs;
 }
 

@@ -57,45 +57,25 @@ int32_t CustomizedVideoEncoderProxy::Encode(
   auto frame_buffer = reinterpret_cast<owt::base::EncodedFrameBuffer*>(
       input_image.video_frame_buffer().get());
 
+  // the video frame already encoded, consider this encoder just a faker
+  // only pass the encoded video packet buffer to its
+  // callback(VideoStreamEncoder)
   auto buffer_size = frame_buffer->buffer_size();
-  std::vector<uint8_t> buffer;
-
-  std::unique_ptr<uint8_t[]> data(new uint8_t[buffer_size]);
-  uint8_t* data_ptr = data.get();
-  memcpy(data_ptr, frame_buffer->buffer(), buffer_size);
-  uint32_t data_size = static_cast<uint32_t>(buffer_size);
+  auto data_ptr = frame_buffer->buffer();
 
   webrtc::EncodedImage encodedframe;
   encodedframe.SetEncodedData(
-      EncodedImageBuffer::Create(data_ptr, buffer_size));
+      EncodedImageBuffer::Create(frame_buffer->buffer(), buffer_size));
   encodedframe._encodedWidth = frame_buffer->width();
   encodedframe._encodedHeight = frame_buffer->height();
   encodedframe.capture_time_ms_ = input_image.render_time_ms();
   encodedframe.SetTimestamp(input_image.timestamp());
 
-  // VP9 requires setting the frame type according to actual frame type.
-  if (codec_type_ == webrtc::kVideoCodecVP9 && data_size > 2) {
-    uint8_t au_key = 1;
-    uint8_t first_byte = data_ptr[0], second_byte = data_ptr[1];
-    uint8_t shift_bits = 4, profile = (first_byte >> shift_bits) & 0x3;
-    shift_bits = (profile == 3) ? 2 : 3;
-    uint8_t show_existing_frame = (first_byte >> shift_bits) & 0x1;
-    if (profile == 3 && show_existing_frame) {
-      au_key = (second_byte >> 6) & 0x1;
-    } else if (profile == 3 && !show_existing_frame) {
-      au_key = (first_byte >> 1) & 0x1;
-    } else if (profile != 3 && show_existing_frame) {
-      au_key = second_byte >> 7;
-    } else {
-      au_key = (first_byte >> 2) & 0x1;
-    }
-    encodedframe._frameType = (au_key == 0)
-                                  ? webrtc::VideoFrameType::kVideoFrameKey
-                                  : webrtc::VideoFrameType::kVideoFrameDelta;
-  }
+  // codec info
   webrtc::CodecSpecificInfo info;
   memset(&info, 0, sizeof(info));
   info.codecType = codec_type_;
+
   if (codec_type_ == webrtc::kVideoCodecVP8) {
     info.codecSpecific.VP8.nonReference = false;
     info.codecSpecific.VP8.temporalIdx = webrtc::kNoTemporalIdx;
@@ -103,6 +83,26 @@ int32_t CustomizedVideoEncoderProxy::Encode(
     info.codecSpecific.VP8.keyIdx = webrtc::kNoKeyIdx;
     picture_id_ = (picture_id_ + 1) & 0x7FFF;
   } else if (codec_type_ == webrtc::kVideoCodecVP9) {
+    if (buffer_size > 2) {  // VP9 requires setting the frame type according to
+                            // actual frame type.
+      uint8_t au_key = 1;
+      uint8_t first_byte = data_ptr[0], second_byte = data_ptr[1];
+      uint8_t shift_bits = 4, profile = (first_byte >> shift_bits) & 0x3;
+      shift_bits = (profile == 3) ? 2 : 3;
+      uint8_t show_existing_frame = (first_byte >> shift_bits) & 0x1;
+      if (profile == 3 && show_existing_frame) {
+        au_key = (second_byte >> 6) & 0x1;
+      } else if (profile == 3 && !show_existing_frame) {
+        au_key = (first_byte >> 1) & 0x1;
+      } else if (profile != 3 && show_existing_frame) {
+        au_key = second_byte >> 7;
+      } else {
+        au_key = (first_byte >> 2) & 0x1;
+      }
+      encodedframe._frameType = (au_key == 0)
+                                    ? webrtc::VideoFrameType::kVideoFrameKey
+                                    : webrtc::VideoFrameType::kVideoFrameDelta;
+    }
     bool key_frame =
         encodedframe._frameType == webrtc::VideoFrameType::kVideoFrameKey;
     if (key_frame) {
@@ -132,7 +132,7 @@ int32_t CustomizedVideoEncoderProxy::Encode(
     int temporal_id = 0, priority_id = 0;
     bool is_idr = false;
     bool need_frame_marking = MediaUtils::GetH264TemporalInfo(
-        data_ptr, data_size, temporal_id, priority_id, is_idr);
+        data_ptr, buffer_size, temporal_id, priority_id, is_idr);
     if (need_frame_marking) {
       info.codecSpecific.H264.temporal_idx = temporal_id;
       info.codecSpecific.H264.idr_frame = is_idr;

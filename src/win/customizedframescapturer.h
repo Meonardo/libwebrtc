@@ -85,7 +85,7 @@ class CustomizedFramesCapturer : public webrtc::VideoCaptureModule,
   int I420DataSize(int height, int stride_y, int stride_u, int stride_v);
 
   rtc::VideoSinkInterface<webrtc::VideoFrame>* data_callback_;
-  std::unique_ptr<VideoFrameGeneratorInterface> frame_generator_;
+  VideoFrameGeneratorInterface* frame_generator_;
   VideoEncoderInterface* encoder_;
   std::unique_ptr<CustomizedFramesThread> frames_generator_thread_;
   int width_;

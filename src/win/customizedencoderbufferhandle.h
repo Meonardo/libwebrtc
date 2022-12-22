@@ -48,13 +48,19 @@ class EncodedFrameBuffer : public VideoFrameBuffer {
         width_(w),
         height_(h),
         size_(size),
-        buffer_(data),
-        keyframe_(keyframe) {}
+        keyframe_(keyframe) {
+    buffer_ = new uint8_t[size];
+    memcpy(buffer_, data, size);
+  }
 
   virtual ~EncodedFrameBuffer() {
     if (native_handle_) {
       delete native_handle_;
       native_handle_ = nullptr;
+    }
+    if (buffer_ != nullptr) {
+      delete[] buffer_;
+      buffer_ = nullptr;
     }
   }
 

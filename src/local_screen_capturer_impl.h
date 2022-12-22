@@ -24,6 +24,8 @@ class LocalScreenCapturerImpl
 
   virtual bool StartCapturing(
       LocalScreenEncodedImageCallback* image_callback) override;
+  virtual bool StartCapturing(
+      LocalScreenRawFrameCallback* frame_callback) override;
   virtual bool StopCapturing() override;
 
   void OnFrame(const webrtc::VideoFrame& frame) override;
@@ -40,7 +42,11 @@ class LocalScreenCapturerImpl
   // encoder
   std::unique_ptr<owt::base::MSDKVideoEncoder> encoder_;
   LocalScreenEncodedImageCallback* image_callback_;
+  LocalScreenRawFrameCallback* frame_callback_;
   bool encoder_initialized_;
+  // frame type copied from `video_stream_encoder.h`
+  std::vector<webrtc::VideoFrameType> next_frame_types_;
+  uint32_t number_cores_ = 0;
 
   bool InitEncoder(int width, int height);
   void ReleaseEncoder();

@@ -117,8 +117,10 @@ CustomizedFramesCapturer::~CustomizedFramesCapturer() {
   // Encoder is created by app. And needs to be freed by
   // application. mark it to nullptr to avoid ReadFrame
   // passing native buffer to stack.
-  encoder_->SetBufferReceiver(nullptr);
-  encoder_ = nullptr;
+  if (encoder_ != nullptr) {
+    encoder_->SetBufferReceiver(nullptr);
+    encoder_ = nullptr;
+  }
 }
 
 void CustomizedFramesCapturer::RegisterCaptureDataCallback(
