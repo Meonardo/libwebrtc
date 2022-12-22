@@ -121,17 +121,17 @@ bool LocalScreenCapturerImpl::InitEncoder(int width, int height) {
   encoder_ = owt::base::MSDKVideoEncoder::Create(format);
 
   webrtc::VideoCodec codec;
-  codec.maxFramerate = 60;
-  codec.startBitrate = 2000;
-  codec.minBitrate = 2000;
-  codec.maxBitrate = 4000;
+  codec.maxFramerate = 30;
+  codec.startBitrate = 2048;
+  codec.minBitrate = 2048;
+  codec.maxBitrate = 4096;
   codec.width = width;
   codec.height = height;
   codec.codecType = webrtc::PayloadStringToCodecType(format.name);
-  codec.qpMax = 57;
+  // codec.qpMax = 57;
 
   // init encoder
-  if (encoder_->InitEncode(&codec, number_cores_, 1174) != 0) {
+  if (encoder_->InitEncode(&codec, number_cores_, 1200) != 0) {
     RTC_LOG(LS_ERROR) << "Failed to initialize the encoder associated with "
                          "codec type: "
                       << CodecTypeToPayloadString(codec.codecType) << " ("
