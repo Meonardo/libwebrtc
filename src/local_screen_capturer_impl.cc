@@ -118,6 +118,11 @@ bool LocalScreenCapturerImpl::InitEncoder(int width, int height) {
   format.SetParam("level-asymmetry-allowed", "1");
   format.SetParam("packetization-mode", "1");
   format.SetParam("profile-level-id", "42e01f");
+  // format.SetParam("profile-id", "1");
+  // format.SetParam("level-id", "120");
+  // format.SetParam("profile-space", "0");
+  // format.SetParam("level-id", "1");
+
   encoder_ = owt::base::MSDKVideoEncoder::Create(format);
 
   webrtc::VideoCodec codec;
@@ -128,6 +133,8 @@ bool LocalScreenCapturerImpl::InitEncoder(int width, int height) {
   codec.width = width;
   codec.height = height;
   codec.codecType = webrtc::PayloadStringToCodecType(format.name);
+  codec.mode = webrtc::VideoCodecMode::kScreensharing;
+  // codec.timing_frame_thresholds = {200, 500};
   // codec.qpMax = 57;
 
   // init encoder

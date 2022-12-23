@@ -228,12 +228,22 @@ int32_t CustomizedVideoEncoderProxy::NextNaluPosition(uint8_t* buffer,
 webrtc::VideoEncoder::EncoderInfo CustomizedVideoEncoderProxy::GetEncoderInfo()
     const {
   EncoderInfo info;
-  info.supports_native_handle = true;
-  info.is_hardware_accelerated = false;
+  info.supports_native_handle = false;
+  info.is_hardware_accelerated = true;
   info.has_internal_source = false;
-  info.implementation_name = "OWTPassthroughEncoder";
-  info.has_trusted_rate_controller = false;
+  info.implementation_name = "IntelMediaSDK-fake";
+  // Disable frame-dropper for MSDK.
+  info.has_trusted_rate_controller = true;
   info.scaling_settings = VideoEncoder::ScalingSettings::kOff;
+
+  // MSDK encoders do not support simulcast. Stack will rely on SimulcastAdapter
+  // to enable simulcast(for AVC/AV1).
+  info.supports_simulcast = false;
+  webrtc::VideoEncoder::ResolutionBitrateLimits rate_limit(
+      1280 * 720, 30 * 1024, 30 * 1024, 60 * 1024 * 1024);
+
+  info.resolution_bitrate_limits.push_back(rate_limit);
+
   return info;
 }
 
