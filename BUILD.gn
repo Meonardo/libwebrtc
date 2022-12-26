@@ -100,7 +100,11 @@ rtc_shared_library("libwebrtc") {
 
   if (is_win) {
     sources += [
+      "include/commontypes.h",
+      "include/deviceutils.h",
+      "include/framegeneratorinterface.h",
       "include/local_screen_capturer.h",
+      "include/videoencoderinterface.h",
       "src/local_screen_capturer_impl.cc",
       "src/local_screen_capturer_impl.h",
       "src/win/base_allocator.cc",
@@ -142,8 +146,8 @@ rtc_shared_library("libwebrtc") {
       "src/win/sysmem_allocator.h",
       "src/win/videorendererd3d11.cc",
       "src/win/videorendererd3d11.h",
-      "src/win/vp9ratecontrol.cc",
-      "src/win/vp9ratecontrol.h",
+      # "src/win/vp9ratecontrol.cc",
+      # "src/win/vp9ratecontrol.h",
     ]
   }
 
@@ -210,11 +214,7 @@ rtc_shared_library("libwebrtc") {
   if (is_win) {
     defines += [ "RTC_DESKTOP_DEVICE" ]
     sources += [
-      "include/commontypes.h",
-      "include/deviceutils.h",
-      "include/framegeneratorinterface.h",
       "include/rtc_desktop_device.h",
-      "include/videoencoderinterface.h",
       "src/interanl/base_desktop_capturer.h",
       "src/interanl/desktop_capturer.h",
       "src/internal/base_desktop_capturer.cc",
@@ -226,12 +226,12 @@ rtc_shared_library("libwebrtc") {
       "../modules/audio_device:audio_device_module_from_input_and_output",
       "../modules/desktop_capture",
     ]
-    deps += [ "//third_party/libvpx" ]
-    include_dirs += [
-      "//third_party/libvpx/source/config",
-      "//third_party/libvpx/source/config/$current_os/x64",
-      "//third_party/libvpx/source/libvpx",
-    ]
+    # deps += [ "//third_party/libvpx" ]
+    # include_dirs += [
+    #   "//third_party/libvpx/source/config",
+    #   "//third_party/libvpx/source/config/$current_os/x64",
+    #   "//third_party/libvpx/source/libvpx",
+    # ]
   }
 
   if (is_win) {
