@@ -30,7 +30,8 @@ LocalScreenCapturerImpl::LocalScreenCapturerImpl(
       encoder_(nullptr),
       image_callback_(nullptr),
       frame_callback_(nullptr),
-      encoder_initialized_(false) {}
+      encoder_initialized_(false),
+      encoded_file_save_path_("") {}
 
 LocalScreenCapturerImpl::~LocalScreenCapturerImpl() {
   capturer_observer_ = nullptr;
@@ -42,7 +43,8 @@ LocalScreenCapturerImpl::~LocalScreenCapturerImpl() {
 }
 
 bool LocalScreenCapturerImpl::StartCapturing(
-    LocalScreenEncodedImageCallback* image_callback) {
+    LocalScreenEncodedImageCallback* image_callback,
+    const char* save_to) {
   if (capturer_ == nullptr) {
     webrtc::DesktopCaptureOptions options =
         webrtc::DesktopCaptureOptions::CreateDefault();
@@ -50,6 +52,8 @@ bool LocalScreenCapturerImpl::StartCapturing(
     capturer_ = new rtc::RefCountedObject<owt::base::BasicScreenCapturer>(
         options, capturer_observer_, cursor_enabled_);
   }
+
+  encoded_file_save_path_ = std::string(save_to);
 
   capturer_->RegisterCaptureDataCallback(this);
   if (capturer_->StartCapture(capability_) != 0) {
@@ -123,7 +127,8 @@ bool LocalScreenCapturerImpl::InitEncoder(int width, int height) {
   // format.SetParam("profile-space", "0");
   // format.SetParam("level-id", "1");
 
-  encoder_ = owt::base::MSDKVideoEncoder::Create(format);
+  encoder_ =
+      owt::base::MSDKVideoEncoder::Create(format, encoded_file_save_path_);
 
   webrtc::VideoCodec codec;
   codec.maxFramerate = 30;
@@ -165,7 +170,8 @@ webrtc::EncodedImageCallback::Result LocalScreenCapturerImpl::OnEncodedImage(
     const webrtc::EncodedImage& encoded_image,
     const webrtc::CodecSpecificInfo* codec_specific_info) {
   if (image_callback_ != nullptr) {
-    bool keyframe = codec_specific_info->codecSpecific.H264.idr_frame;
+    bool keyframe =
+        encoded_image._frameType == webrtc::VideoFrameType::kVideoFrameKey;
     image_callback_->OnEncodedImage(
         encoded_image.GetEncodedData()->data(), encoded_image.size(), keyframe,
         encoded_image._encodedWidth, encoded_image._encodedHeight);

@@ -27,7 +27,12 @@ using namespace rtc;
 namespace owt {
 namespace base {
 
-MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format)
+MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format) {
+  MSDKVideoEncoder(format, "");
+}
+
+MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format,
+                                   const std::string& write_to_filepath)
     : callback_(nullptr),
       bitrate_(0),
       width_(0),
@@ -41,28 +46,27 @@ MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format)
       << "Failed to start encoder thread for MSDK encoder";
 
   rtp_codec_parameters_ = format;
-
-#if !defined(NDEBUG)
-  encoder_dump_file_name_ = "C:\\Users\\Meonardo\\Downloads";
-  // Because '/' can't be used inside a field trial parameter, we use ';'
-  // instead.
-  // This is only relevant to WebRTC-EncoderDataDumpDirectory
-  // field trial. ';' is chosen arbitrary. Even though it's a legal
-  // character in some file systems, we can sacrifice ability to use it in
-  // the path to dumped video, since it's developers-only feature for
-  // debugging.
-  absl::c_replace(encoder_dump_file_name_, ';', '/');
+  encoder_dump_file_name_ = write_to_filepath;
   if (!encoder_dump_file_name_.empty()) {
-    enable_bitstream_dump_ = true;
-    char filename_buffer[256];
-    rtc::SimpleStringBuilder ssb(filename_buffer);
-    ssb << encoder_dump_file_name_ << "/webrtc_send_stream_"
-        << rtc::TimeMicros() << ".ivf";
-    dump_writer_ = webrtc::IvfFileWriter::Wrap(
-        webrtc::FileWrapper::OpenWriteOnly(ssb.str()),
-        /* byte_limit= */ 100000000);
+    // Because '/' can't be used inside a field trial parameter, we use ';'
+    // instead.
+    // This is only relevant to WebRTC-EncoderDataDumpDirectory
+    // field trial. ';' is chosen arbitrary. Even though it's a legal
+    // character in some file systems, we can sacrifice ability to use it in
+    // the path to dumped video, since it's developers-only feature for
+    // debugging.
+    absl::c_replace(encoder_dump_file_name_, ';', '/');
+    if (!encoder_dump_file_name_.empty()) {
+      enable_bitstream_dump_ = true;
+      char filename_buffer[256];
+      rtc::SimpleStringBuilder ssb(filename_buffer);
+      ssb << encoder_dump_file_name_ << "/webrtc_send_stream_"
+          << rtc::TimeMicros() << ".ivf";
+      dump_writer_ = webrtc::IvfFileWriter::Wrap(
+          webrtc::FileWrapper::OpenWriteOnly(ssb.str()),
+          /* byte_limit= */ 100000000);
+    }
   }
-#endif  // NDEBUG
 }
 
 MSDKVideoEncoder::~MSDKVideoEncoder() {
@@ -790,6 +794,12 @@ uint32_t MaxSizeOfKeyframeAsPercentage(uint32_t optimal_buffer_size,
 std::unique_ptr<MSDKVideoEncoder> MSDKVideoEncoder::Create(
     cricket::VideoCodec format) {
   return absl::make_unique<MSDKVideoEncoder>(format);
+}
+
+std::unique_ptr<MSDKVideoEncoder> MSDKVideoEncoder::Create(
+    cricket::VideoCodec format,
+    const std::string& save_to) {
+  return absl::make_unique<MSDKVideoEncoder>(format, save_to);
 }
 
 }  // namespace base

@@ -36,9 +36,13 @@ enum MemType {
 class MSDKVideoEncoder : public webrtc::VideoEncoder {
  public:
   explicit MSDKVideoEncoder(const cricket::VideoCodec& codec);
+  MSDKVideoEncoder(const cricket::VideoCodec& cocec,
+                   const std::string& write_to_filepath);
   virtual ~MSDKVideoEncoder();
 
   static std::unique_ptr<MSDKVideoEncoder> Create(cricket::VideoCodec format);
+  static std::unique_ptr<MSDKVideoEncoder> Create(cricket::VideoCodec format,
+                                                  const std::string& save_to);
   int InitEncode(const webrtc::VideoCodec* codec_settings,
                  int number_of_cores,
                  size_t max_payload_size) override;

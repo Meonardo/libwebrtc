@@ -12,9 +12,6 @@ class LocalScreenEncodedImageCallback {
                               bool keyframe,
                               size_t w,
                               size_t h) = 0;
-  /// @brief contains already encoded data handle `EncodedImageHandle`
-  /// @param image `EncodedImageHandle` pointer
-  virtual void OnEncodedImage(void* image) = 0;
 };
 
 class LocalScreenRawFrameCallback {
@@ -30,9 +27,9 @@ class LocalScreenCapturer : public RefCountInterface {
                             LocalDesktopCapturerParameters* parameters);
 
   // start capturing screen and register encoded image callback
-  virtual bool StartCapturing(
-      LocalScreenEncodedImageCallback* image_callback) = 0;
-  // start capturing screen and register raw frame callbacl
+  virtual bool StartCapturing(LocalScreenEncodedImageCallback* image_callback,
+                              const char* save_to) = 0;
+  // start capturing screen and register raw frame callback
   virtual bool StartCapturing(LocalScreenRawFrameCallback* frame_callback) = 0;
   // stop capturing screen
   virtual bool StopCapturing() = 0;

@@ -46,9 +46,8 @@ EncodedVideoEncoderFactory::GetSupportedFormats() const {
   // }
 
   // NOTICE: only use h264 codec for now
-  for (const webrtc::SdpVideoFormat& format :
-       owt::base::CodecUtils::SupportedH264Codecs())
-    supported_codecs.push_back(format);
+  supported_codecs.push_back(
+      owt::base::CodecUtils::GetConstrainedBaselineH264Codec());
 
   return supported_codecs;
 }
