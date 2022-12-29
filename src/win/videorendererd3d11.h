@@ -121,6 +121,7 @@ class WebrtcVideoRendererD3D11Impl : public libwebrtc::RefCountInterface {
 
  private:
   bool InitMPO(int width, int height);
+  void ResetMPO();
   void RenderNativeHandleFrame(webrtc::VideoFrameBuffer* buffer);
   void RenderNV12DXGIMPO(int width, int height);
   bool CreateVideoProcessor(int width, int height, bool reset);

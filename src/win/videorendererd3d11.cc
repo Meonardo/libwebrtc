@@ -165,7 +165,7 @@ void WebrtcVideoRendererD3D11Impl::OnFrame(webrtc::VideoFrameBuffer* buffer) {
 
   if (frame_observer_ != nullptr && frame_width_ != width &&
       frame_height_ != height) {
-    frame_observer_->OnVideoFrameSizeChanged(wnd_, (uint16_t) width,
+    frame_observer_->OnVideoFrameSizeChanged(wnd_, (uint16_t)width,
                                              (uint16_t)height);
   }
   frame_width_ = width;
@@ -360,6 +360,72 @@ bool WebrtcVideoRendererD3D11Impl::InitSwapChain(int width,
   return true;
 }
 
+void WebrtcVideoRendererD3D11Impl::ResetMPO() {
+  if (d3d11_video_device_ != nullptr) {
+    d3d11_video_device_->Release();
+    d3d11_video_device_ = nullptr;
+  }
+  if (p_mt != nullptr) {
+    p_mt->Release();
+    p_mt = nullptr;
+  }
+
+  // MPO objects
+  if (dxgi_device2_ != nullptr) {
+    dxgi_device2_.Release();
+    dxgi_device2_ = nullptr;
+  }
+  if (comp_device2_ != nullptr) {
+    comp_device2_.Release();
+    comp_device2_ = nullptr;
+  }
+  if (visual_preview_ != nullptr) {
+    visual_preview_.Release();
+    visual_preview_ = nullptr;
+  }
+  if (root_visual_ != nullptr) {
+    root_visual_->RemoveAllVisuals();
+    root_visual_.Release();
+    root_visual_ = nullptr;
+  }
+  if (comp_target_ != nullptr) {
+    comp_target_->SetRoot(NULL);
+    comp_target_.Release();
+    comp_target_ = nullptr;
+  }
+  // MPO objects end
+
+  if (video_processor_enum_ != nullptr && video_processor_ != nullptr) {
+    video_processor_enum_.Release();
+    video_processor_enum_ = nullptr;
+    video_processor_.Release();
+    video_processor_ = nullptr;
+  }
+
+  if (d3d11_device2_ != nullptr) {
+    d3d11_device2_->Release();
+    d3d11_device2_ = nullptr;
+  }
+
+  if (d3d11_staging_texture_ != nullptr) {
+    d3d11_staging_texture_->Release();
+    d3d11_staging_texture_ = nullptr;
+  }
+  if (d3d11_device_context_ != nullptr) {
+    d3d11_device_context_->Release();
+    d3d11_device_context_ = nullptr;
+  }
+  if (d3d11_video_context_ != nullptr) {
+    d3d11_video_context_->Release();
+    d3d11_video_context_ = nullptr;
+  }
+
+  if (swap_chain_for_hwnd_ != nullptr) {
+    swap_chain_for_hwnd_.Release();
+    swap_chain_for_hwnd_ = nullptr;
+  }
+}
+
 void WebrtcVideoRendererD3D11Impl::RenderNativeHandleFrame(
     webrtc::VideoFrameBuffer* buffer) {
   D3D11ImageHandle* native_handle = reinterpret_cast<D3D11ImageHandle*>(
@@ -374,6 +440,14 @@ void WebrtcVideoRendererD3D11Impl::RenderNativeHandleFrame(
   if (!render_device) {
     RTC_LOG(LS_ERROR) << "Decoder passed an invalid d3d11 device.";
     return;
+  }
+
+  // check if the `d3d11_device_` is changed
+  if (d3d11_device_ != nullptr && d3d11_device_ != render_device) {
+    RTC_LOG(LS_ERROR) << "Renderer device has changed.";
+    d3d11_mpo_inited_ = false;
+    // reset all the object related with `d3d11_device_`.
+    ResetMPO();
   }
 
   d3d11_device_ = render_device;
