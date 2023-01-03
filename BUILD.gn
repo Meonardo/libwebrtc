@@ -1,7 +1,7 @@
 import("../webrtc.gni")
 
 declare_args() {
-  libwebrtc_intel_media_sdk = false
+  libwebrtc_intel_media_sdk = true
   libwebrtc_desktop_capture = true
 }
 
@@ -220,8 +220,8 @@ rtc_shared_library("libwebrtc") {
       "include/rtc_desktop_capturer.h",
       "include/rtc_desktop_device.h",
       "include/rtc_desktop_media_list.h",
-      "src/internal/desktop_capturer.h",
       "src/internal/desktop_capturer.cc",
+      "src/internal/desktop_capturer.h",
       "src/rtc_desktop_capturer_impl.cc",
       "src/rtc_desktop_capturer_impl.h",
       "src/rtc_desktop_device_impl.cc",
