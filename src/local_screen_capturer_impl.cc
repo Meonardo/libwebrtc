@@ -131,9 +131,9 @@ bool LocalScreenCapturerImpl::InitEncoder(int width, int height) {
       owt::base::MSDKVideoEncoder::Create(format, encoded_file_save_path_);
 
   webrtc::VideoCodec codec;
-  codec.maxFramerate = 30;
-  codec.startBitrate = 2048;
-  codec.minBitrate = 2048;
+  codec.maxFramerate = 60;
+  codec.startBitrate = 3000;
+  codec.minBitrate = 3000;
   codec.maxBitrate = 4096;
   codec.width = width;
   codec.height = height;

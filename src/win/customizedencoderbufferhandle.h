@@ -49,7 +49,7 @@ class EncodedFrameBuffer : public VideoFrameBuffer {
         height_(h),
         size_(size),
         keyframe_(keyframe) {
-    buffer_ = new uint8_t[size];
+    buffer_ = static_cast<uint8_t*>(malloc(size));
     memcpy(buffer_, data, size);
   }
 
@@ -58,10 +58,7 @@ class EncodedFrameBuffer : public VideoFrameBuffer {
       delete native_handle_;
       native_handle_ = nullptr;
     }
-    if (buffer_ != nullptr) {
-      delete[] buffer_;
-      buffer_ = nullptr;
-    }
+    free(buffer_);
   }
 
   Type type() const override { return Type::kNative; }
