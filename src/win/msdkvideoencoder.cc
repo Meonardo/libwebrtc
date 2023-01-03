@@ -27,9 +27,8 @@ using namespace rtc;
 namespace owt {
 namespace base {
 
-MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format) {
-  MSDKVideoEncoder(format, "");
-}
+MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format)
+    : MSDKVideoEncoder(format, "") {}
 
 MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format,
                                    const std::string& write_to_filepath)
