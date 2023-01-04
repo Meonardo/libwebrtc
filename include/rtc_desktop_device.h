@@ -66,6 +66,8 @@ class LocalDesktopCapturerParameters final {
         audio_enabled_(audio_enabled),
         cursor_enabled_(cursor_enabled),
         fps_(30),
+        width_(0),
+        height_(0),
         source_type_(DesktopSourceType::kFullScreen),
         capture_policy_(DesktopCapturePolicy::kDefault) {}
 
@@ -104,6 +106,16 @@ class LocalDesktopCapturerParameters final {
   /** @cond */
   int Fps() const { return fps_; }
 
+  /// @brief scale width
+  /// @param w
+  void Width(int w) { width_ = w; }
+  int Width() const { return width_; }
+
+  /// @brief scale height
+  /// @param h
+  void Height(int h) { height_ = h; }
+  int Height() const { return height_; }
+
   DesktopSourceType SourceType() const { return source_type_; }
   DesktopCapturePolicy CapturePolicy() const { return capture_policy_; }
   /** @endcond */
@@ -112,6 +124,8 @@ class LocalDesktopCapturerParameters final {
   bool audio_enabled_;
   bool cursor_enabled_;
   int fps_;
+  int width_;
+  int height_;
   DesktopSourceType source_type_;
   DesktopCapturePolicy capture_policy_;
 };

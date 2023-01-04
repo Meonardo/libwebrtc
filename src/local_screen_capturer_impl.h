@@ -23,10 +23,12 @@ class LocalScreenCapturerImpl
   virtual ~LocalScreenCapturerImpl();
 
   virtual bool StartCapturing(LocalScreenEncodedImageCallback* image_callback,
+                              LocalDesktopCapturerParameters* parameters,
                               const char* save_to) override;
   virtual bool StartCapturing(
-      LocalScreenRawFrameCallback* frame_callback) override;
-  virtual bool StopCapturing() override;
+      LocalScreenRawFrameCallback* frame_callback,
+      LocalDesktopCapturerParameters* parameters) override;
+  virtual bool StopCapturing(bool release_encoder) override;
 
   void OnFrame(const webrtc::VideoFrame& frame) override;
   virtual webrtc::EncodedImageCallback::Result OnEncodedImage(

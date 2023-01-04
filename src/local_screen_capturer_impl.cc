@@ -12,6 +12,8 @@ LocalScreenCapturer::CreateLocalScreenCapturer(
   webrtc::VideoCaptureCapability capability;
   capability.maxFPS = parameters->Fps();
   capability.videoType = webrtc::VideoType::kI420;
+  capability.width = parameters->Width();
+  capability.height = parameters->Height();
 
   scoped_refptr<LocalScreenCapturerImpl> capturer =
       scoped_refptr<LocalScreenCapturerImpl>(
@@ -38,12 +40,12 @@ LocalScreenCapturerImpl::~LocalScreenCapturerImpl() {
   image_callback_ = nullptr;
   frame_callback_ = nullptr;
 
-  StopCapturing();
-  ReleaseEncoder();
+  StopCapturing(true);
 }
 
 bool LocalScreenCapturerImpl::StartCapturing(
     LocalScreenEncodedImageCallback* image_callback,
+    LocalDesktopCapturerParameters* parameters,
     const char* save_to) {
   if (capturer_ == nullptr) {
     webrtc::DesktopCaptureOptions options =
@@ -56,8 +58,15 @@ bool LocalScreenCapturerImpl::StartCapturing(
   encoded_file_save_path_ = std::string(save_to);
 
   capturer_->RegisterCaptureDataCallback(this);
+  if (parameters != nullptr) {  // update scale info
+    capability_.height = parameters->Height();
+    capability_.width = parameters->Width();
+  } else {  // restore to screen size
+    capability_.width = 0;
+    capability_.height = 0;
+  }
   if (capturer_->StartCapture(capability_) != 0) {
-    return StopCapturing();
+    return StopCapturing(true);
   }
 
   number_cores_ = webrtc::CpuInfo::DetectNumberOfCores();
@@ -67,7 +76,8 @@ bool LocalScreenCapturerImpl::StartCapturing(
 }
 
 bool LocalScreenCapturerImpl::StartCapturing(
-    LocalScreenRawFrameCallback* frame_callback) {
+    LocalScreenRawFrameCallback* frame_callback,
+    LocalDesktopCapturerParameters* parameters) {
   if (capturer_ == nullptr) {
     webrtc::DesktopCaptureOptions options =
         webrtc::DesktopCaptureOptions::CreateDefault();
@@ -77,15 +87,22 @@ bool LocalScreenCapturerImpl::StartCapturing(
   }
 
   capturer_->RegisterCaptureDataCallback(this);
+  if (parameters != nullptr) {  // update scale info
+    capability_.height = parameters->Height();
+    capability_.width = parameters->Width();
+  } else {  // restore to screen size
+    capability_.width = 0;
+    capability_.height = 0;
+  }
   if (capturer_->StartCapture(capability_) != 0) {
-    return StopCapturing();
+    return StopCapturing(true);
   }
 
   frame_callback_ = frame_callback;
   return capturer_->CaptureStarted();
 }
 
-bool LocalScreenCapturerImpl::StopCapturing() {
+bool LocalScreenCapturerImpl::StopCapturing(bool release_encoder) {
   if (capturer_ == nullptr)
     return false;
 
@@ -93,6 +110,10 @@ bool LocalScreenCapturerImpl::StopCapturing() {
   capturer_->StopCapture();
   capturer_->DeRegisterCaptureDataCallback();
   capturer_ = nullptr;
+
+  if (release_encoder) {  // release encoder
+    ReleaseEncoder();
+  }
   return true;
 }
 
@@ -131,14 +152,14 @@ bool LocalScreenCapturerImpl::InitEncoder(int width, int height) {
       owt::base::MSDKVideoEncoder::Create(format, encoded_file_save_path_);
 
   webrtc::VideoCodec codec;
-  codec.maxFramerate = 60;
-  codec.startBitrate = 3000;
-  codec.minBitrate = 3000;
-  codec.maxBitrate = 4096;
+  codec.maxFramerate = 30;
+  codec.startBitrate = 4000;
+  codec.minBitrate = 4000;
+  codec.maxBitrate = 6000;
   codec.width = width;
   codec.height = height;
   codec.codecType = webrtc::PayloadStringToCodecType(format.name);
-  codec.mode = webrtc::VideoCodecMode::kScreensharing;
+  // codec.mode = webrtc::VideoCodecMode::kScreensharing;
   // codec.timing_frame_thresholds = {200, 500};
   // codec.qpMax = 57;
 

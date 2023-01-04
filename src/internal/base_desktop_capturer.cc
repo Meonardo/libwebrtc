@@ -102,6 +102,7 @@ BasicScreenCapturer::BasicScreenCapturer(
         webrtc::DesktopCapturer::CreateScreenCapturer(screen_capture_options_);
   }
 }
+
 BasicScreenCapturer::~BasicScreenCapturer() {
   DeRegisterCaptureDataCallback();
   if (capture_started_)
@@ -110,6 +111,9 @@ BasicScreenCapturer::~BasicScreenCapturer() {
 
 int32_t BasicScreenCapturer::StartCapture(
     const webrtc::VideoCaptureCapability& capabilit) {
+  s_width_ = capabilit.width;
+  s_height_ = capabilit.height;
+
   if (capture_started_) {
     RTC_LOG(LS_ERROR) << "Basic Screen Capturerer is already running";
     return 0;
@@ -165,7 +169,7 @@ int32_t BasicScreenCapturer::CaptureSettings(
     webrtc::VideoCaptureCapability& settings) {
   settings.width = width_;
   settings.height = height_;
-  settings.maxFPS = 30;  // We should not hardcode it.
+  settings.maxFPS = 60;  // We should not hardcode it.
   settings.videoType = webrtc::VideoType::kI420;
 
   return 0;
@@ -183,6 +187,7 @@ int BasicScreenCapturer::I420DataSize(int height,
                                       int stride_v) {
   return stride_y * height + (stride_u + stride_v) * ((height + 1) / 2);
 }
+
 void BasicScreenCapturer::AdjustFrameBuffer(int32_t width, int32_t height) {
   if (width_ != width || height != height_ || !frame_buffer_) {
     RTC_LOG(LS_VERBOSE) << "Allocate new memory for frame buffer.";
@@ -206,6 +211,7 @@ void BasicScreenCapturer::CaptureFrame() {
   }
   return screen_capturer_->CaptureFrame();
 }
+
 void BasicScreenCapturer::OnCaptureResult(
     webrtc::DesktopCapturer::Result result,
     std::unique_ptr<webrtc::DesktopFrame> frame) {
@@ -223,24 +229,57 @@ void BasicScreenCapturer::OnCaptureResult(
     RTC_LOG(LS_ERROR) << "Invalid screen data";
     return;
   }
-  // The captured frame is of memory layout ABRG. convert it to I420 as
-  // required.
-  AdjustFrameBuffer(frame_width, frame_height);
-  libyuv::ARGBToI420(frame_data_rgba, frame_stride,
-                     frame_buffer_->MutableDataY(), frame_buffer_->StrideY(),
-                     frame_buffer_->MutableDataU(), frame_buffer_->StrideU(),
-                     frame_buffer_->MutableDataV(), frame_buffer_->StrideV(),
-                     frame_width, frame_height);
-  webrtc::VideoFrame captured_frame =
-      webrtc::VideoFrame::Builder()
-          .set_video_frame_buffer(frame_buffer_)
-          .set_timestamp_rtp(0)
-          .set_timestamp_ms(rtc::TimeMillis())
-          .set_rotation(webrtc::kVideoRotation_0)
-          .build();
 
-  captured_frame.set_ntp_time_ms(0);
-  data_callback_->OnFrame(captured_frame);
+  // check if need to scale
+  if ((s_width_ > 0 && s_height_ > 0) &&
+      (frame_width > s_width_ || frame_height > s_height_)) {
+    // Resize ARGB
+    int resized_argb_buffer_size = s_width_ * s_height_ * 4;
+    auto resized_argb_buffer =
+        absl::make_unique<uint8_t[]>(resized_argb_buffer_size);
+    int resized_argb_row_bytes = s_width_ * 4;
+    libyuv::ARGBScale(frame_data_rgba, frame_stride, frame_width, frame_height,
+                      resized_argb_buffer.get(), resized_argb_row_bytes,
+                      s_width_, s_height_, libyuv::FilterMode::kFilterBilinear);
+
+    // The captured frame is of memory layout ABRG. convert it to I420 as
+    // required.
+    AdjustFrameBuffer(s_width_, s_height_);
+    libyuv::ARGBToI420(resized_argb_buffer.get(), resized_argb_row_bytes,
+                       frame_buffer_->MutableDataY(), frame_buffer_->StrideY(),
+                       frame_buffer_->MutableDataU(), frame_buffer_->StrideU(),
+                       frame_buffer_->MutableDataV(), frame_buffer_->StrideV(),
+                       s_width_, s_height_);
+    webrtc::VideoFrame captured_frame =
+        webrtc::VideoFrame::Builder()
+            .set_video_frame_buffer(frame_buffer_)
+            .set_timestamp_rtp(0)
+            .set_timestamp_ms(rtc::TimeMillis())
+            .set_rotation(webrtc::kVideoRotation_0)
+            .build();
+
+    captured_frame.set_ntp_time_ms(0);
+    data_callback_->OnFrame(captured_frame);
+  } else {
+    // The captured frame is of memory layout ABRG. convert it to I420 as
+    // required.
+    AdjustFrameBuffer(frame_width, frame_height);
+    libyuv::ARGBToI420(frame_data_rgba, frame_stride,
+                       frame_buffer_->MutableDataY(), frame_buffer_->StrideY(),
+                       frame_buffer_->MutableDataU(), frame_buffer_->StrideU(),
+                       frame_buffer_->MutableDataV(), frame_buffer_->StrideV(),
+                       frame_width, frame_height);
+    webrtc::VideoFrame captured_frame =
+        webrtc::VideoFrame::Builder()
+            .set_video_frame_buffer(frame_buffer_)
+            .set_timestamp_rtp(0)
+            .set_timestamp_ms(rtc::TimeMillis())
+            .set_rotation(webrtc::kVideoRotation_0)
+            .build();
+
+    captured_frame.set_ntp_time_ms(0);
+    data_callback_->OnFrame(captured_frame);
+  }
 }
 
 bool BasicScreenCapturer::GetCurrentScreenList(libwebrtc::SourceList& list) {
@@ -291,9 +330,11 @@ bool BasicScreenCapturer::SetCaptureScreen(int screen_id) {
 void ScreenCaptureThread::Run() {
   ProcessMessages(kForever);
 }
+
 ScreenCaptureThread::~ScreenCaptureThread() {
   Stop();
 }
+
 BasicWindowCapturer::BasicWindowCapturer(
     webrtc::DesktopCaptureOptions options,
     libwebrtc::LocalDesktopCapturerObserver* observer,
@@ -330,6 +371,7 @@ BasicWindowCapturer::~BasicWindowCapturer() {
   if (capture_started_)
     StopCapture();
 }
+
 void BasicWindowCapturer::WindowCaptureThreadFunc(void* pThis) {
   static_cast<BasicWindowCapturer*>(pThis)->CaptureThreadProcess();
 }
@@ -478,6 +520,7 @@ bool BasicWindowCapturer::GetCurrentWindowList(libwebrtc::SourceList& list) {
 
   return true;
 }
+
 bool BasicWindowCapturer::SetCaptureWindow(int window_id) {
   if (!window_capturer_) {
     RTC_LOG(LS_ERROR) << "No window capturer.";
@@ -492,12 +535,14 @@ bool BasicWindowCapturer::SetCaptureWindow(int window_id) {
   }
   return false;
 }
+
 int BasicWindowCapturer::I420DataSize(int height,
                                       int stride_y,
                                       int stride_u,
                                       int stride_v) {
   return stride_y * height + (stride_u + stride_v) * ((height + 1) / 2);
 }
+
 void BasicWindowCapturer::AdjustFrameBuffer(int32_t width, int32_t height) {
   if (width_ != width || height != height_ || !frame_buffer_) {
     RTC_LOG(LS_VERBOSE) << "Allocate new memory for frame buffer.";
@@ -521,6 +566,7 @@ void BasicWindowCapturer::CaptureFrame() {
   }
   return window_capturer_->CaptureFrame();
 }
+
 void BasicWindowCapturer::OnCaptureResult(
     webrtc::DesktopCapturer::Result result,
     std::unique_ptr<webrtc::DesktopFrame> frame) {

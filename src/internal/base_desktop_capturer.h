@@ -126,6 +126,9 @@ class BasicScreenCapturer : public BasicDesktopCapturer {
   std::unique_ptr<BasicScreenCaptureThread> screen_capture_thread_;
   int width_;
   int height_;
+  // scale width & height
+  int s_width_;
+  int s_height_;
   uint32_t frame_buffer_capacity_;
   rtc::scoped_refptr<webrtc::I420Buffer>
       frame_buffer_;  // Reuseable buffer for video frames.

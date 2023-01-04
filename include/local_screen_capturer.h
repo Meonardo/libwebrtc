@@ -28,11 +28,14 @@ class LocalScreenCapturer : public RefCountInterface {
 
   // start capturing screen and register encoded image callback
   virtual bool StartCapturing(LocalScreenEncodedImageCallback* image_callback,
+                              LocalDesktopCapturerParameters* parameters,
                               const char* save_to) = 0;
   // start capturing screen and register raw frame callback
-  virtual bool StartCapturing(LocalScreenRawFrameCallback* frame_callback) = 0;
+  virtual bool StartCapturing(LocalScreenRawFrameCallback* frame_callback,
+                              LocalDesktopCapturerParameters* parameters) = 0;
   // stop capturing screen
-  virtual bool StopCapturing() = 0;
+  // `release_encoder` default is `false`
+  virtual bool StopCapturing(bool release_encoder) = 0;
 
  protected:
   virtual ~LocalScreenCapturer() {}
