@@ -2,11 +2,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include "src/win/mediacapabilities.h"
 #include <string>
 #include <vector>
 #include "mfxcommon.h"
 #include "mfxstructures.h"
+#include "src/win/mediacapabilities.h"
 #include "rtc_base/logging.h"
 
 namespace owt {
@@ -46,6 +46,8 @@ MediaCapabilities::SupportedCapabilitiesForVideoEncoder(
   std::vector<VideoEncoderCapability> capabilities;
 
   bool support_h264 = false, h264_lp = false, h264_argb = false;
+  bool support_hevc_8 = false, support_hevc_10 = false,
+       support_hevc_scc = false;
   bool support_vp9_8 = false, support_vp9_10 = false;
   bool is_discrete_graphics = false;
 
@@ -62,6 +64,8 @@ MediaCapabilities::SupportedCapabilitiesForVideoEncoder(
       }
 #if (MFX_VERSION >= 1027)
       if (platform_code >= MFX_PLATFORM_ICELAKE) {
+        support_hevc_8 = true;
+        support_hevc_10 = true;
         support_vp9_8 = true;
         support_vp9_10 = true;
       }
@@ -129,7 +133,8 @@ MediaCapabilities::SupportedCapabilitiesForVideoEncoder(
             vp9_10_cap.sampling_modes.push_back(SamplingMode::kY410);
             capabilities.push_back(vp9_10_cap);
           }
-        } else if (codec == owt::base::VideoCodec::kH264) {
+        }
+        else if (codec == owt::base::VideoCodec::kH264) {
           memset(&video_param, 0, sizeof(video_param));
           video_param.mfx.CodecId = MFX_CODEC_AVC;
           // Don't check profiles. We know we can support from CB up to High.
@@ -152,6 +157,87 @@ MediaCapabilities::SupportedCapabilitiesForVideoEncoder(
               avc_cap.sampling_modes.push_back(SamplingMode::kARGB);
             capabilities.push_back(avc_cap);
           }
+        }
+        else if (codec == owt::base::VideoCodec::kH265) {
+          memset(&video_param, 0, sizeof(video_param));
+          // We remove support of SW encoders through plugin, so never
+          // load plugins here.
+          video_param.mfx.CodecId = MFX_CODEC_HEVC;
+          video_param.mfx.CodecProfile = MFX_PROFILE_HEVC_MAIN;
+          sts = mfx_encoder_->Query(nullptr, &video_param);
+          if (sts != MFX_ERR_NONE)
+            support_hevc_8 &= false;
+
+          memset(&video_param, 0, sizeof(video_param));
+          video_param.mfx.CodecId = MFX_CODEC_HEVC;
+          video_param.mfx.CodecProfile = MFX_PROFILE_HEVC_MAIN10;
+          sts = mfx_encoder_->Query(nullptr, &video_param);
+          if (sts != MFX_ERR_NONE)
+            support_hevc_10 &= false;
+
+#if (MFX_VERSION >= 1032)  // 2020.R1
+          // MSDK API v1.32 enables screen content e
+          memset(&video_param, 0, sizeof(video_param));
+          video_param.mfx.CodecId = MFX_CODEC_HEVC;
+          video_param.mfx.CodecProfile = MFX_PROFILE_HEVC_SCC;
+          sts = mfx_encoder_->Query(nullptr, &video_param);
+          if (sts == MFX_ERR_NONE)
+            support_hevc_scc = true;
+#endif
+          if (support_hevc_8) {
+            VideoEncoderCapability hevc_8_cap;
+            hevc_8_cap.codec_type = owt::base::VideoCodec::kH265;
+            hevc_8_cap.has_trusted_rate_controller = true;
+            hevc_8_cap.hardware_accelerated = true;
+            hevc_8_cap.low_power = true;
+            hevc_8_cap.max_temporal_layers = 3;
+            hevc_8_cap.max_spatial_layers = 1;
+            hevc_8_cap.codec_specific.H265.profile = H265ProfileId::kMain;
+            hevc_8_cap.supported_brc_modes.push_back(BRCMode::kCBR);
+            hevc_8_cap.supported_brc_modes.push_back(BRCMode::kVBR);
+            hevc_8_cap.supported_brc_modes.push_back(BRCMode::kCQP);
+            hevc_8_cap.sampling_modes.push_back(SamplingMode::kNv12);
+            capabilities.push_back(hevc_8_cap);
+          }
+          if (support_hevc_10) {
+            VideoEncoderCapability hevc_10_cap;
+            hevc_10_cap.codec_type = owt::base::VideoCodec::kH265;
+            hevc_10_cap.has_trusted_rate_controller = true;
+            hevc_10_cap.hardware_accelerated = true;
+            hevc_10_cap.low_power = true;
+            hevc_10_cap.max_temporal_layers = 3;
+            hevc_10_cap.max_spatial_layers = 1;
+            hevc_10_cap.codec_specific.H265.profile = H265ProfileId::kMain10;
+            hevc_10_cap.supported_brc_modes.push_back(BRCMode::kCBR);
+            hevc_10_cap.supported_brc_modes.push_back(BRCMode::kVBR);
+            hevc_10_cap.supported_brc_modes.push_back(BRCMode::kCQP);
+            hevc_10_cap.sampling_modes.push_back(SamplingMode::kY410);
+            hevc_10_cap.sampling_modes.push_back(SamplingMode::kP010);
+            capabilities.push_back(hevc_10_cap);
+          }
+#if (MFX_VERSION >= 1032)
+          // Used only when VideoCodec.mode is "kScreenSharing".
+          if (support_hevc_scc) {
+            VideoEncoderCapability hevc_scc_cap;
+            hevc_scc_cap.codec_type = owt::base::VideoCodec::kH265;
+            hevc_scc_cap.has_trusted_rate_controller = true;
+            hevc_scc_cap.hardware_accelerated = true;
+            // Disable temporal scalability for screen content.
+            // TODO: check platform capability instead.
+            hevc_scc_cap.max_temporal_layers = 1;
+            hevc_scc_cap.max_spatial_layers = 1;
+            hevc_scc_cap.low_power = true;
+            hevc_scc_cap.codec_specific.H265.profile = H265ProfileId::kScc;
+            hevc_scc_cap.supported_brc_modes.push_back(BRCMode::kCBR);
+            hevc_scc_cap.supported_brc_modes.push_back(BRCMode::kVBR);
+            hevc_scc_cap.supported_brc_modes.push_back(BRCMode::kCQP);
+            hevc_scc_cap.sampling_modes.push_back(SamplingMode::kNv12);
+            hevc_scc_cap.sampling_modes.push_back(SamplingMode::kP010);
+            // Maybe move this to first priority as it's 4:4:4?
+            hevc_scc_cap.sampling_modes.push_back(SamplingMode::kY410);
+            capabilities.push_back(hevc_scc_cap);
+          }
+#endif
         }
       }
     }
@@ -199,7 +285,24 @@ MediaCapabilities::SupportedCapabilitiesForVideoDecoder(
           avc_cap.max_resolution = {3840, 2160};
           capabilities.push_back(avc_cap);
         }
-      } else if (codec == owt::base::VideoCodec::kAv1) {
+      }
+      else if (codec == owt::base::VideoCodec::kH265) {
+        memset(&video_param, 0, sizeof(video_param));
+        video_param.mfx.CodecId = MFX_CODEC_HEVC;
+        sts = mfx_decoder_->Query(nullptr, &video_param);
+        RTC_LOG(LS_ERROR) << "Johny---H265 query result:" << sts;
+
+        if (sts == MFX_ERR_NONE) {
+          VideoDecoderCapability h265_cap;
+          h265_cap.codec_type = owt::base::VideoCodec::kH265;
+          h265_cap.hardware_accelerated = true;
+          // Starting from KBL we support both 8-bit and 10-bit, so
+          // not specifying profiles here.
+          h265_cap.max_resolution = {7680, 4320};
+          capabilities.push_back(h265_cap);
+        }
+      }
+      else if (codec == owt::base::VideoCodec::kAv1) {
         // Disallow potential AV1 SW decoder.
 #if (MFX_VERSION < 1031)
         continue;
@@ -261,6 +364,7 @@ MediaCapabilities* MediaCapabilities::Get() {
 MediaCapabilities::MediaCapabilities() {}
 
 MediaCapabilities::~MediaCapabilities() {
+
   if (mfx_encoder_) {
     mfx_encoder_->Close();
     mfx_encoder_.reset();
@@ -272,9 +376,11 @@ MediaCapabilities::~MediaCapabilities() {
   if (msdk_factory_ && mfx_session_) {
     msdk_factory_->DestroySession(mfx_session_);
   }
+
 }
 
 bool MediaCapabilities::Init() {
+
   bool res = false;
   msdk_factory_ = owt::base::MSDKFactory::Get();
   if (!msdk_factory_)
@@ -299,7 +405,10 @@ bool MediaCapabilities::Init() {
     inited_ = true;
 failed:
   return res;
+
 }
+
+
 
 }  // namespace base
 }  // namespace owt

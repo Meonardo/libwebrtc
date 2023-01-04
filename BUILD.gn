@@ -134,17 +134,35 @@ rtc_shared_library("libwebrtc") {
   # intel media sdk
   if (is_win && libwebrtc_intel_media_sdk) {
     sources += [
+      "include/commontypes.h",
+      "include/deviceutils.h",
+      "include/framegeneratorinterface.h",
+      "include/local_screen_capturer.h",
+      "include/videoencoderinterface.h",
+      "src/internal/base_desktop_capturer.cc",
+      "src/internal/base_desktop_capturer.h",
+      "src/local_screen_capturer_impl.cc",
+      "src/local_screen_capturer_impl.h",
       "src/win/base_allocator.cc",
       "src/win/base_allocator.h",
       "src/win/codecutils.cc",
       "src/win/codecutils.h",
-      "src/win/commontypes.h",
+      "src/win/customizedencoderbufferhandle.h",
+      "src/win/customizedframescapturer.cc",
+      "src/win/customizedframescapturer.h",
+      "src/win/customizedvideoencoderproxy.cc",
+      "src/win/customizedvideoencoderproxy.h",
+      "src/win/customizedvideosource.cc",
+      "src/win/customizedvideosource.h",
       "src/win/d3d11_allocator.cc",
       "src/win/d3d11_allocator.h",
       "src/win/d3d11_manager.h",
       "src/win/d3d_allocator.cc",
       "src/win/d3d_allocator.h",
       "src/win/d3dnativeframe.h",
+      "src/win/deviceutils.cc",
+      "src/win/encodedvideoencoderfactory.cc",
+      "src/win/encodedvideoencoderfactory.h",
       "src/win/mediacapabilities.cc",
       "src/win/mediacapabilities.h",
       "src/win/mediautils.cc",
@@ -163,14 +181,18 @@ rtc_shared_library("libwebrtc") {
       "src/win/nativehandlebuffer.h",
       "src/win/sysmem_allocator.cc",
       "src/win/sysmem_allocator.h",
+      "src/win/videorendererd3d11.cc",
+      "src/win/videorendererd3d11.h",
     ]
     include_dirs += [ "src/win/include" ]
     defines += [ "USE_INTEL_MEDIA_SDK" ]
     configs += [ "//build/config/win:windowed" ]
     libs += [
       "libmfx_vs2015.lib",
-      "dxgi.lib",
       "d3d11.lib",
+      "dxgi.lib",
+      "dxva2.lib",
+      "Dcomp.lib",
     ]
     lib_dirs = [ "src\win\lib\x64" ]
     ldflags = [
@@ -203,6 +225,7 @@ rtc_shared_library("libwebrtc") {
     "../media:rtc_media",
     "../media:rtc_media_base",
     "../modules/audio_device:audio_device",
+    "../modules/audio_device:audio_device_module_from_input_and_output",
     "../modules/audio_processing:api",
     "../modules/audio_processing:audio_processing",
     "../modules/video_capture:video_capture_module",

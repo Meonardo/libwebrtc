@@ -101,6 +101,17 @@ struct SdpParseError {
 
 enum DesktopType { kScreen, kWindow };
 
+typedef DesktopType SourceType;
+
+struct Source {
+ public:
+  string id;
+  string title;
+  SourceType type;
+};
+
+using SourceList = portable::vector<Source>;
+
 }  // namespace libwebrtc
 
 #endif  // LIB_WEBRTC_RTC_TYPES_HXX

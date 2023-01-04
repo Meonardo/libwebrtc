@@ -19,6 +19,21 @@ class RTCPeerConnection;
 class RTCAudioDevice;
 class RTCVideoDevice;
 
+class GlobalConfiguration {
+ public:
+  LIB_WEBRTC_API static void SetVideoHardwareAccelerationEnabled(bool enabled);
+  LIB_WEBRTC_API static bool GetVideoHardwareAccelerationEnabled();
+  LIB_WEBRTC_API static void SetCustomizedVideoEncoderEnabled(bool enabled);
+  LIB_WEBRTC_API static bool GetCustomizedVideoEncoderEnabled();
+};
+
+class VideoFrameSizeChangeObserver {
+ public:
+  virtual void OnVideoFrameSizeChanged(HWND hwnd,
+                                       uint16_t width,
+                                       uint16_t height) = 0;
+};
+
 class RTCPeerConnectionFactory : public RefCountInterface {
  public:
   virtual bool Initialize() = 0;

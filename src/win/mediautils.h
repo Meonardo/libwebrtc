@@ -8,7 +8,7 @@
 #include <string>
 #include "absl/types/optional.h"
 #include "api/video_codecs/sdp_video_format.h"
-#include "src/win/commontypes.h"
+#include "commontypes.h"
 
 namespace owt {
 namespace base {

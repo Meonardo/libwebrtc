@@ -16,10 +16,12 @@
 #include "mfxplugin++.h"
 #include "mfxvideo++.h"
 #include "mfxvideo.h"
-#include "modules/video_coding/codecs/h264/include/h264.h"
 #include "modules/video_coding/utility/ivf_file_writer.h"
-#include "rtc_base/thread.h"
 #include "sysmem_allocator.h"
+// #include "media/base/vp9_profile.h"
+#include "mediautils.h"
+#include "modules/video_coding/codecs/h264/include/h264.h"
+#include "rtc_base/thread.h"
 
 namespace owt {
 namespace base {
@@ -34,9 +36,13 @@ enum MemType {
 class MSDKVideoEncoder : public webrtc::VideoEncoder {
  public:
   explicit MSDKVideoEncoder(const cricket::VideoCodec& codec);
+  MSDKVideoEncoder(const cricket::VideoCodec& cocec,
+                   const std::string& write_to_filepath);
   virtual ~MSDKVideoEncoder();
 
   static std::unique_ptr<MSDKVideoEncoder> Create(cricket::VideoCodec format);
+  static std::unique_ptr<MSDKVideoEncoder> Create(cricket::VideoCodec format,
+                                                  const std::string& save_to);
   int InitEncode(const webrtc::VideoCodec* codec_settings,
                  int number_of_cores,
                  size_t max_payload_size) override;
@@ -76,6 +82,19 @@ class MSDKVideoEncoder : public webrtc::VideoEncoder {
   std::unique_ptr<MFXVideoENCODE> m_pmfx_enc_;
   std::shared_ptr<SysMemFrameAllocator> m_pmfx_allocator_;
   mfxVideoParam m_mfx_enc_params_;
+
+  // Members used by HEVC
+  mfxExtHEVCParam m_ext_hevc_param_;
+  // H265Profile space is always 0.
+  H265ProfileId h265_profile_ = owt::base::H265ProfileId::kMain;
+
+  // // Members used by VP9
+  // mfxExtVP9Param vp9_ext_param_;
+  // webrtc::VP9Profile vp9_profile_ = webrtc::VP9Profile::kProfile0;
+  // std::unique_ptr<VP9RateControl> vp9_rate_ctrl_;
+  // libvpx::VP9RateControlRtcConfig vp9_rc_config_;
+  // libvpx::VP9FrameParamsQpRTC frame_params_;
+  // bool vp9_use_external_brc_ = false;
 
   // TODO(johny): MSDK will remove the version macro usage for headers.
   // Turn this on when appropriate.

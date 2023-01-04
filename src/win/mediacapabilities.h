@@ -8,8 +8,8 @@
 #include <mutex>
 #include <vector>
 #include "base_allocator.h"
+#include "commontypes.h"
 #include "mfxvideo++.h"
-#include "src/win/commontypes.h"
 #include "src/win/mediautils.h"
 #include "src/win/msdkvideobase.h"
 

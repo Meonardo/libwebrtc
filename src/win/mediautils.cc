@@ -1,16 +1,16 @@
 // Copyright (C) <2018> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
+#include "src/win/mediautils.h"
 #include <algorithm>
 #include <map>
 #include <string>
 #include "absl/types/optional.h"
 #include "common_video/h264/h264_common.h"
-//#include "common_video/h264/prefix_parser.h"
+#include "common_video/h264/prefix_parser.h"
 #include "rtc_base/bit_buffer.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/string_to_number.h"
-#include "src/win/mediautils.h"
 #include "system_wrappers/include/field_trial.h"
 
 namespace owt {
@@ -49,17 +49,17 @@ AudioCodec MediaUtils::GetAudioCodecFromString(const std::string& codec_name) {
   if (it != audio_codec_names.end()) {
     return it->second;
   }
-  RTC_NOTREACHED();
   return AudioCodec::kUnknown;
 }
+
 VideoCodec MediaUtils::GetVideoCodecFromString(const std::string& codec_name) {
   auto it = video_codec_names.find(codec_name);
   if (it != video_codec_names.end()) {
     return it->second;
   }
-  RTC_NOTREACHED();
   return VideoCodec::kUnknown;
 }
+
 std::string MediaUtils::AudioCodecToString(const AudioCodec& audio_codec) {
   auto it = std::find_if(audio_codec_names.begin(), audio_codec_names.end(),
                          [&audio_codec](const auto& codec) {
@@ -68,10 +68,10 @@ std::string MediaUtils::AudioCodecToString(const AudioCodec& audio_codec) {
   if (it != audio_codec_names.end()) {
     return it->first;
   } else {
-    RTC_NOTREACHED();
     return "unknown";
   }
 }
+
 std::string MediaUtils::VideoCodecToString(const VideoCodec& video_codec) {
   auto it = std::find_if(video_codec_names.begin(), video_codec_names.end(),
                          [&video_codec](const auto& codec) {
@@ -80,10 +80,10 @@ std::string MediaUtils::VideoCodecToString(const VideoCodec& video_codec) {
   if (it != video_codec_names.end()) {
     return it->first;
   } else {
-    RTC_NOTREACHED();
     return "unknown";
   }
 }
+
 absl::optional<unsigned int> MediaUtils::GetH264TemporalLayers() {
   std::string experiment_value =
       webrtc::field_trial::FindFullName("OWT-H264TemporalLayers");
@@ -94,34 +94,40 @@ absl::optional<unsigned int> MediaUtils::GetH264TemporalLayers() {
   layers = std::max(layers, 1u);
   return layers;
 }
+
 bool ParseSlice(const uint8_t* slice,
                 size_t length,
                 int& temporal_id,
                 int& priority_id,
                 bool& is_idr) {
-  // using namespace webrtc;
-  // webrtc::H264::NaluType nalu_type = webrtc::H264::ParseNaluType(slice[0]);
-  // absl::optional<PrefixParser::PrefixState> prefix_state;
-  // switch (nalu_type) {
-  //  case H264::NaluType::kPrefix: {
-  //    prefix_state = PrefixParser::ParsePrefix(
-  //        slice + webrtc::H264::kNaluTypeSize,
-  //                               length - webrtc::H264::kNaluTypeSize);
-  //    break;
-  //  }
-  // Ignore all other cases as we only care about prefix NAL.
-  // default:
-  // break;
-  //}
-  // if (prefix_state.has_value()) {
-  // temporal_id = prefix_state.value().temporal_id;
-  // is_idr = prefix_state.value().idr_flag == 1 ? true : false;
-  // priority_id = prefix_state.value().priority_id;
-  // return true;
-  //}
+  using namespace webrtc;
+  webrtc::H264::NaluType nalu_type = webrtc::H264::ParseNaluType(slice[0]);
+  absl::optional<PrefixParser::PrefixState> prefix_state;
+  switch (nalu_type) {
+    case H264::NaluType::kPrefix: {
+      prefix_state =
+          PrefixParser::ParsePrefix(slice + webrtc::H264::kNaluTypeSize,
+                                    length - webrtc::H264::kNaluTypeSize);
+      break;
+    }
+    case H264::NaluType::kIdr: {
+      is_idr = true;
+      break;
+    }
+    // Ignore all other cases as we only care about prefix NAL.
+    default:
+      break;
+  }
+  if (prefix_state.has_value()) {
+    temporal_id = prefix_state.value().temporal_id;
+    is_idr = prefix_state.value().idr_flag == 1 ? true : false;
+    priority_id = prefix_state.value().priority_id;
+    return true;
+  }
 
   return false;
 }
+
 bool MediaUtils::GetH264TemporalInfo(uint8_t* buffer,
                                      size_t buffer_length,
                                      int& temporal_id,

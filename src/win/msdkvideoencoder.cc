@@ -7,6 +7,7 @@
 #include <vector>
 #include "absl/algorithm/container.h"
 #include "common_video/h264/h264_common.h"
+#include "common_video/h265/h265_common.h"
 #include "libyuv/convert_from.h"
 #include "mfxcommon.h"
 #include "rtc_base/checks.h"
@@ -27,6 +28,10 @@ namespace owt {
 namespace base {
 
 MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format)
+    : MSDKVideoEncoder(format, "") {}
+
+MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format,
+                                   const std::string& write_to_filepath)
     : callback_(nullptr),
       bitrate_(0),
       width_(0),
@@ -40,25 +45,26 @@ MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format)
       << "Failed to start encoder thread for MSDK encoder";
 
   rtp_codec_parameters_ = format;
-
-  encoder_dump_file_name_ =
-      webrtc::field_trial::FindFullName("WebRTC-EncoderDataDumpDirectory");
-  // Because '/' can't be used inside a field trial parameter, we use ';'
-  // instead.
-  // This is only relevant to WebRTC-EncoderDataDumpDirectory
-  // field trial. ';' is chosen arbitrary. Even though it's a legal character
-  // in some file systems, we can sacrifice ability to use it in the path to
-  // dumped video, since it's developers-only feature for debugging.
-  absl::c_replace(encoder_dump_file_name_, ';', '/');
+  encoder_dump_file_name_ = write_to_filepath;
   if (!encoder_dump_file_name_.empty()) {
-    enable_bitstream_dump_ = true;
-    char filename_buffer[256];
-    rtc::SimpleStringBuilder ssb(filename_buffer);
-    ssb << encoder_dump_file_name_ << "/webrtc_send_stream_"
-        << rtc::TimeMicros() << ".ivf";
-    dump_writer_ = webrtc::IvfFileWriter::Wrap(
-        webrtc::FileWrapper::OpenWriteOnly(ssb.str()),
-        /* byte_limit= */ 100000000);
+    // Because '/' can't be used inside a field trial parameter, we use ';'
+    // instead.
+    // This is only relevant to WebRTC-EncoderDataDumpDirectory
+    // field trial. ';' is chosen arbitrary. Even though it's a legal
+    // character in some file systems, we can sacrifice ability to use it in
+    // the path to dumped video, since it's developers-only feature for
+    // debugging.
+    absl::c_replace(encoder_dump_file_name_, ';', '/');
+    if (!encoder_dump_file_name_.empty()) {
+      enable_bitstream_dump_ = true;
+      char filename_buffer[256];
+      rtc::SimpleStringBuilder ssb(filename_buffer);
+      ssb << encoder_dump_file_name_ << "/webrtc_send_stream_"
+          << rtc::TimeMicros() << ".ivf";
+      dump_writer_ = webrtc::IvfFileWriter::Wrap(
+          webrtc::FileWrapper::OpenWriteOnly(ssb.str()),
+          /* byte_limit= */ 100000000);
+    }
   }
 }
 
@@ -133,21 +139,45 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
     int number_of_cores,
     size_t max_payload_size) {
   mfxStatus sts;
-  RTC_LOG(LS_INFO) << "InitEncodeOnEncoderThread: maxBitrate:"
-                   << codec_settings->maxBitrate
-                   << "framerate:" << codec_settings->maxFramerate
-                   << "targetBitRate:" << codec_settings->maxBitrate
-                   << "frame_height:" << codec_settings->height
-                   << "frame_width:" << codec_settings->width;
+  RTC_LOG(LS_ERROR) << "InitEncodeOnEncoderThread: maxBitrate:"
+                    << codec_settings->maxBitrate
+                    << "framerate:" << codec_settings->maxFramerate
+                    << "targetBitRate:" << codec_settings->maxBitrate
+                    << "frame_height:" << codec_settings->height
+                    << "frame_width:" << codec_settings->width;
   uint32_t codec_id = MFX_CODEC_AVC;
   switch (codec_type_) {
     case webrtc::kVideoCodecH264:
       codec_id = MFX_CODEC_AVC;
       break;
+    case webrtc::kVideoCodecH265:
+      codec_id = MFX_CODEC_HEVC;
+      break;
+    case webrtc::kVideoCodecVP9:
+      codec_id = MFX_CODEC_VP9;
+      break;
+    case webrtc::kVideoCodecAV1:
+      codec_id = MFX_CODEC_AV1;
+      break;
     default:
       RTC_LOG(LS_ERROR) << "Invalid codec specified.";
       return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
   }
+
+  // Parse the profile used here. With MSDK we use auto levels, but
+  // later we should switch to use the level specified in SDP.
+  if (codec_id == MFX_CODEC_HEVC) {
+    h265_profile_ =
+        MediaUtils::ParseSdpForH265Profile(rtp_codec_parameters_.params)
+            .value_or(owt::base::H265ProfileId::kMain);
+  }
+#if (MFX_VERSION >= MFX_VERSION_NEXT)
+  else if (codec_id == MFX_CODEC_AV1) {
+    av1_profile_ =
+        MediaUtils::ParseSdpForAV1Profile(rtp_codec_parameters.params)
+            .value_or(owt::base::AV1Profile::kMain);
+  }
+#endif
 
   // If already inited, what we need to do is to reset the encoder,
   // instead of setting it all over again.
@@ -161,7 +191,8 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
   }
   MSDKFactory* factory = MSDKFactory::Get();
   // We're not using d3d11.
-  m_mfx_session_ = factory->CreateSession(false);
+  // somehow it will return nullptr if not use d3d11 to create session.
+  m_mfx_session_ = factory->CreateSession();
   if (!m_mfx_session_) {
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
@@ -188,6 +219,28 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
   m_enc_ext_params_.clear();
   m_mfx_enc_params_.mfx.CodecId = codec_id;
 
+  if (codec_id == MFX_CODEC_HEVC) {
+    m_mfx_enc_params_.mfx.CodecProfile =
+        (h265_profile_ == owt::base::H265ProfileId::kMain)
+            ? MFX_PROFILE_HEVC_MAIN
+            : MFX_PROFILE_HEVC_MAIN10;
+  }
+#if (MFX_VERSION >= MFX_VERSION_NEXT)
+  else if (codec_id == MFX_CODEC_AV1) {
+    switch (av1_profile_) {
+      // We will not support professional profile.
+      case owt::base::AV1Profile::kMain:
+        m_mfx_enc_params_.mfx.CodecProfile = MFX_PROFILE_AV1_MAIN;
+        break;
+      case owt::base::AV1Profile::kHigh:
+        m_mfx_enc_params_.mfx.CodecProfile = MFX_PROFILE_AV1_HIGH;
+        break;
+      default:
+        m_mfx_enc_params_.mfx.CodecProfile = MFX_PROFILE_AV1_MAIN;
+    }
+  }
+#endif
+
   m_mfx_enc_params_.mfx.TargetUsage = MFX_TARGETUSAGE_BALANCED;
   m_mfx_enc_params_.mfx.RateControlMethod = MFX_RATECONTROL_CQP;
   m_mfx_enc_params_.mfx.QPI = 31;
@@ -201,6 +254,18 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
 
   // Frame info parameters
   m_mfx_enc_params_.mfx.FrameInfo.FourCC = MFX_FOURCC_NV12;
+  if ((codec_id == MFX_CODEC_HEVC &&
+       h265_profile_ == owt::base::H265ProfileId::kMain10)
+#if (MFX_VERSION >= MFX_VERSION_NEXT)
+      // Currently for High we use 10-bit. RTP spec for AV1 does not clearly
+      // define the max-bpp setting. Need to re-visit this for AV1 RTP spec 1.0.
+      || (codec_id == MFX_CODEC_AV1 &&
+          av1_profile_ == owt::base::AV1Profile::kHigh)
+#endif
+  ) {
+    m_mfx_enc_params_.mfx.FrameInfo.FourCC = MFX_FOURCC_P010;
+  }
+
   m_mfx_enc_params_.mfx.FrameInfo.Shift = 0;
 
   // WebRTC will not request for Y410 & Y416 at present for VP9/AV1/HEVC.
@@ -264,6 +329,23 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
   if (codec_id != MFX_CODEC_VP9)
     m_enc_ext_params_.push_back((mfxExtBuffer*)&extendedCodingOptions3);
 #endif
+
+  if (codec_id == MFX_CODEC_HEVC) {
+    MSDK_ZERO_MEMORY(m_ext_hevc_param_);
+    // If the crop width/height is 8-bit aligned but not 16-bit aligned,
+    // add extended param to boost the performance.
+    m_ext_hevc_param_.Header.BufferId = MFX_EXTBUFF_HEVC_PARAM;
+    m_ext_hevc_param_.Header.BufferSz = sizeof(m_ext_hevc_param_);
+
+    if ((!((m_mfx_enc_params_.mfx.FrameInfo.CropW & 15) ^ 8) ||
+         !((m_mfx_enc_params_.mfx.FrameInfo.CropH & 15) ^ 8))) {
+      m_ext_hevc_param_.PicWidthInLumaSamples =
+          m_mfx_enc_params_.mfx.FrameInfo.CropW;
+      m_ext_hevc_param_.PicHeightInLumaSamples =
+          m_mfx_enc_params_.mfx.FrameInfo.CropH;
+      m_enc_ext_params_.push_back((mfxExtBuffer*)&m_ext_hevc_param_);
+    }
+  }
 
   num_temporal_layers_ =
       std::min(static_cast<int>(
@@ -518,9 +600,6 @@ retry:
   uint8_t* encoded_data = static_cast<uint8_t*>(bs.Data) + bs.DataOffset;
   int encoded_data_size = bs.DataLength;
 
-  // webrtc::EncodedImage encodedFrame(encoded_data, encoded_data_size,
-  //                                  encoded_data_size);
-
   webrtc::EncodedImage encodedFrame;
   encodedFrame._encodedHeight = input_image.height();
   encodedFrame._encodedWidth = input_image.width();
@@ -620,12 +699,21 @@ webrtc::VideoEncoder::EncoderInfo MSDKVideoEncoder::GetEncoderInfo() const {
   EncoderInfo info;
   info.supports_native_handle = false;
   info.is_hardware_accelerated = true;
-  info.has_internal_source = false;
+  // info.has_internal_source = false;
   info.implementation_name = "IntelMediaSDK";
   // Disable frame-dropper for MSDK.
   info.has_trusted_rate_controller = true;
-  info.scaling_settings = VideoEncoder::ScalingSettings::kOff;
-
+  if (codec_type_ == webrtc::kVideoCodecVP9)
+    info.scaling_settings = VideoEncoder::ScalingSettings::kOff;
+#if (MFX_VERSION >= MFX_VERSION_NEXT)
+  else if (codec_type == webrtc::kVideoCodecAV1) {
+    info.scaling_settings =
+        VideoEncoder::ScalingSettings(kMinQindexAv1, kMaxQindexAv1);
+  }
+#endif
+  else {
+    info.scaling_settings = VideoEncoder::ScalingSettings::kOff;
+  }
   // MSDK encoders do not support simulcast. Stack will rely on SimulcastAdapter
   // to enable simulcast(for AVC/AV1).
   info.supports_simulcast = false;
@@ -711,6 +799,12 @@ uint32_t MaxSizeOfKeyframeAsPercentage(uint32_t optimal_buffer_size,
 std::unique_ptr<MSDKVideoEncoder> MSDKVideoEncoder::Create(
     cricket::VideoCodec format) {
   return absl::make_unique<MSDKVideoEncoder>(format);
+}
+
+std::unique_ptr<MSDKVideoEncoder> MSDKVideoEncoder::Create(
+    cricket::VideoCodec format,
+    const std::string& save_to) {
+  return absl::make_unique<MSDKVideoEncoder>(format, save_to);
 }
 
 }  // namespace base

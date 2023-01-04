@@ -18,6 +18,8 @@
 #include "src/internal/desktop_capturer.h"
 #endif
 
+#include "modules/audio_device/win/audio_device_core_win.h"
+
 namespace libwebrtc {
 
 class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
@@ -101,6 +103,7 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
 #endif
   std::list<scoped_refptr<RTCPeerConnection>> peerconnections_;
   std::unique_ptr<webrtc::TaskQueueFactory> task_queue_factory_;
+  std::unique_ptr<webrtc::ScopedCOMInitializer> com_initializer_;
 };
 
 }  // namespace libwebrtc
