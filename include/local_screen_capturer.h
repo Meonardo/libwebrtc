@@ -23,16 +23,16 @@ class LocalScreenRawFrameCallback {
 class LocalScreenCapturer : public RefCountInterface {
  public:
   LIB_WEBRTC_API static scoped_refptr<LocalScreenCapturer>
-  CreateLocalScreenCapturer(LocalDesktopCapturerObserver* observer,
-                            LocalDesktopCapturerParameters* parameters);
+  CreateLocalScreenCapturer(LocalDesktopCapturerObserver* capturer_observer);
 
   // start capturing screen and register encoded image callback
-  virtual bool StartCapturing(LocalScreenEncodedImageCallback* image_callback,
-                              LocalDesktopCapturerParameters* parameters,
-                              const char* save_to) = 0;
+  virtual bool StartCapturing(
+      LocalScreenEncodedImageCallback* image_callback,
+      std::shared_ptr<LocalDesktopCapturerParameters> parameters) = 0;
   // start capturing screen and register raw frame callback
-  virtual bool StartCapturing(LocalScreenRawFrameCallback* frame_callback,
-                              LocalDesktopCapturerParameters* parameters) = 0;
+  virtual bool StartCapturing(
+      LocalScreenRawFrameCallback* frame_callback,
+      std::shared_ptr<LocalDesktopCapturerParameters> parameters) = 0;
   // stop capturing screen
   // `release_encoder` default is `false`
   virtual bool StopCapturing(bool release_encoder) = 0;

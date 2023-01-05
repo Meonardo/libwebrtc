@@ -7,33 +7,24 @@ namespace libwebrtc {
 // static method
 scoped_refptr<LocalScreenCapturer>
 LocalScreenCapturer::CreateLocalScreenCapturer(
-    LocalDesktopCapturerObserver* observer,
-    LocalDesktopCapturerParameters* parameters) {
-  webrtc::VideoCaptureCapability capability;
-  capability.maxFPS = parameters->Fps();
-  capability.videoType = webrtc::VideoType::kI420;
-  capability.width = parameters->Width();
-  capability.height = parameters->Height();
-
+    LocalDesktopCapturerObserver* capturer_observer) {
   scoped_refptr<LocalScreenCapturerImpl> capturer =
       scoped_refptr<LocalScreenCapturerImpl>(
-          new RefCountedObject<LocalScreenCapturerImpl>(
-              capability, observer, parameters->CursorEnabled()));
+          new RefCountedObject<LocalScreenCapturerImpl>(capturer_observer));
   return capturer;
 }
 
 LocalScreenCapturerImpl::LocalScreenCapturerImpl(
-    webrtc::VideoCaptureCapability capability,
-    LocalDesktopCapturerObserver* observer,
-    bool cursor_enabled)
-    : capturer_observer_(observer),
-      capability_(capability),
-      cursor_enabled_(cursor_enabled),
+    LocalDesktopCapturerObserver* capturer_observer)
+    : capturer_observer_(capturer_observer),
       encoder_(nullptr),
       image_callback_(nullptr),
       frame_callback_(nullptr),
       encoder_initialized_(false),
-      encoded_file_save_path_("") {}
+      encoded_file_save_path_(""),
+      max_bitrate_(6000),
+      min_bitrate_(3000),
+      max_framerate_(30) {}
 
 LocalScreenCapturerImpl::~LocalScreenCapturerImpl() {
   capturer_observer_ = nullptr;
@@ -45,27 +36,43 @@ LocalScreenCapturerImpl::~LocalScreenCapturerImpl() {
 
 bool LocalScreenCapturerImpl::StartCapturing(
     LocalScreenEncodedImageCallback* image_callback,
-    LocalDesktopCapturerParameters* parameters,
-    const char* save_to) {
+    std::shared_ptr<LocalDesktopCapturerParameters> parameters) {
+  if (parameters == nullptr || image_callback == nullptr) {
+    RTC_LOG(LS_ERROR) << "Must set `LocalDesktopCapturerParameters`!";
+    return false;
+  }
+
   if (capturer_ == nullptr) {
     webrtc::DesktopCaptureOptions options =
         webrtc::DesktopCaptureOptions::CreateDefault();
+    // tmp set directX to true
     options.set_allow_directx_capturer(true);
     capturer_ = new rtc::RefCountedObject<owt::base::BasicScreenCapturer>(
-        options, capturer_observer_, cursor_enabled_);
+        options, capturer_observer_, parameters->CursorEnabled());
   }
-
-  encoded_file_save_path_ = std::string(save_to);
 
   capturer_->RegisterCaptureDataCallback(this);
-  if (parameters != nullptr) {  // update scale info
-    capability_.height = parameters->Height();
-    capability_.width = parameters->Width();
-  } else {  // restore to screen size
-    capability_.width = 0;
-    capability_.height = 0;
-  }
-  if (capturer_->StartCapture(capability_) != 0) {
+
+  // encode file path
+  encoded_file_save_path_ = parameters->EncodedFilePath();
+  if (!encoded_file_save_path_.empty())
+    RTC_LOG(LS_ERROR) << "Save encoded video to " << encoded_file_save_path_;
+
+  // assign capture capability
+  webrtc::VideoCaptureCapability capability;
+  capability.videoType = webrtc::VideoType::kI420;
+  capability.height = parameters->Height();
+  capability.width = parameters->Width();
+  capability.maxFPS = parameters->Fps();
+
+  if (parameters->Fps() > 0)
+    max_framerate_ = parameters->Fps();
+  if (parameters->MaxBitrate() > 0)
+    max_bitrate_ = parameters->MaxBitrate();
+  if (parameters->MinBitrate() > 0)
+    min_bitrate_ = parameters->MinBitrate();
+
+  if (capturer_->StartCapture(capability) != 0) {
     return StopCapturing(true);
   }
 
@@ -77,24 +84,30 @@ bool LocalScreenCapturerImpl::StartCapturing(
 
 bool LocalScreenCapturerImpl::StartCapturing(
     LocalScreenRawFrameCallback* frame_callback,
-    LocalDesktopCapturerParameters* parameters) {
+    std::shared_ptr<LocalDesktopCapturerParameters> parameters) {
+  if (parameters == nullptr || frame_callback == nullptr) {
+    RTC_LOG(LS_ERROR) << "Must set `LocalDesktopCapturerParameters`!";
+    return false;
+  }
+
   if (capturer_ == nullptr) {
     webrtc::DesktopCaptureOptions options =
         webrtc::DesktopCaptureOptions::CreateDefault();
+    // tmp set directX to true
     options.set_allow_directx_capturer(true);
     capturer_ = new rtc::RefCountedObject<owt::base::BasicScreenCapturer>(
-        options, capturer_observer_, cursor_enabled_);
+        options, capturer_observer_, parameters->CursorEnabled());
   }
 
   capturer_->RegisterCaptureDataCallback(this);
-  if (parameters != nullptr) {  // update scale info
-    capability_.height = parameters->Height();
-    capability_.width = parameters->Width();
-  } else {  // restore to screen size
-    capability_.width = 0;
-    capability_.height = 0;
-  }
-  if (capturer_->StartCapture(capability_) != 0) {
+  // assign capture capability
+  webrtc::VideoCaptureCapability capability;
+  capability.videoType = webrtc::VideoType::kI420;
+  capability.height = parameters->Height();
+  capability.width = parameters->Width();
+  capability.maxFPS = parameters->Fps();
+
+  if (capturer_->StartCapture(capability) != 0) {
     return StopCapturing(true);
   }
 
@@ -107,6 +120,7 @@ bool LocalScreenCapturerImpl::StopCapturing(bool release_encoder) {
     return false;
 
   image_callback_ = nullptr;
+  frame_callback_ = nullptr;
   capturer_->StopCapture();
   capturer_->DeRegisterCaptureDataCallback();
   capturer_ = nullptr;
@@ -152,10 +166,10 @@ bool LocalScreenCapturerImpl::InitEncoder(int width, int height) {
       owt::base::MSDKVideoEncoder::Create(format, encoded_file_save_path_);
 
   webrtc::VideoCodec codec;
-  codec.maxFramerate = 30;
-  codec.startBitrate = 4000;
-  codec.minBitrate = 4000;
-  codec.maxBitrate = 6000;
+  codec.maxFramerate = max_framerate_;
+  codec.startBitrate = min_bitrate_;
+  codec.minBitrate = min_bitrate_;
+  codec.maxBitrate = max_bitrate_;
   codec.width = width;
   codec.height = height;
   codec.codecType = webrtc::PayloadStringToCodecType(format.name);

@@ -17,17 +17,15 @@ class LocalScreenCapturerImpl
       public rtc::VideoSinkInterface<webrtc::VideoFrame>,
       public webrtc::EncodedImageCallback {
  public:
-  LocalScreenCapturerImpl(webrtc::VideoCaptureCapability capability,
-                          LocalDesktopCapturerObserver* observer,
-                          bool cursor_enabled);
+  LocalScreenCapturerImpl(LocalDesktopCapturerObserver* capturer_observer);
   virtual ~LocalScreenCapturerImpl();
 
-  virtual bool StartCapturing(LocalScreenEncodedImageCallback* image_callback,
-                              LocalDesktopCapturerParameters* parameters,
-                              const char* save_to) override;
+  virtual bool StartCapturing(
+      LocalScreenEncodedImageCallback* image_callback,
+      std::shared_ptr<LocalDesktopCapturerParameters>) override;
   virtual bool StartCapturing(
       LocalScreenRawFrameCallback* frame_callback,
-      LocalDesktopCapturerParameters* parameters) override;
+      std::shared_ptr<LocalDesktopCapturerParameters>) override;
   virtual bool StopCapturing(bool release_encoder) override;
 
   void OnFrame(const webrtc::VideoFrame& frame) override;
@@ -39,8 +37,6 @@ class LocalScreenCapturerImpl
   // capturer
   LocalDesktopCapturerObserver* capturer_observer_;
   rtc::scoped_refptr<owt::base::BasicScreenCapturer> capturer_;
-  webrtc::VideoCaptureCapability capability_;
-  bool cursor_enabled_;
   // encoder
   std::unique_ptr<owt::base::MSDKVideoEncoder> encoder_;
   LocalScreenEncodedImageCallback* image_callback_;
@@ -51,6 +47,10 @@ class LocalScreenCapturerImpl
   uint32_t number_cores_ = 0;
   // path to save the encoded video data
   std::string encoded_file_save_path_;
+  // max & min bitrate(kilobits/sec)
+  int max_bitrate_;
+  int min_bitrate_;
+  uint32_t max_framerate_;
 
   bool InitEncoder(int width, int height);
   void ReleaseEncoder();

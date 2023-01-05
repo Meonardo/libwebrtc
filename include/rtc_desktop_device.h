@@ -15,12 +15,11 @@ class LocalDesktopCapturerObserver {
   application.
   @details After local stream is started, this callback will be invoked to
   request for a source from application.
-  @param window_list list of windows/screen's (id, title) pair.
-  @param dest_window application will set this id to be used by it.
+  @param sources list of windows/screen's (id, title) pair.
+  @param dest_source application will set this id to be used by it.
   */
   virtual void OnCaptureSourceNeeded(const SourceList& sources,
-                                     int& dest_source) {}
-  virtual ~LocalDesktopCapturerObserver() {}
+                                     int& dest_source) = 0;
 };
 
 /**
@@ -52,36 +51,21 @@ class LocalDesktopCapturerParameters final {
     /// Capture from application
     kApplication
   };
-  /**
-  @brief Initialize a LocalDesktopCapturerParameters.
-  @param audio_enabled Indicates if audio is enabled for this stream.
-  @param video_anabled Indicates if video is enabled for this stream.
-  @param soruce_type Indicates if capture from screen or an app.
-  @param capture_policy the OR of any of the DesktopCapturePolicy options.
-  */
-  LocalDesktopCapturerParameters(bool audio_enabled,
-                                 bool video_enabled,
-                                 bool cursor_enabled)
-      : video_enabled_(video_enabled),
-        audio_enabled_(audio_enabled),
-        cursor_enabled_(cursor_enabled),
+
+  LocalDesktopCapturerParameters(bool cursor_enabled)
+      : cursor_enabled_(cursor_enabled),
+        source_type_(DesktopSourceType::kFullScreen),
+        capture_policy_(DesktopCapturePolicy::kDefault),
         fps_(30),
         width_(0),
         height_(0),
-        source_type_(DesktopSourceType::kFullScreen),
-        capture_policy_(DesktopCapturePolicy::kDefault) {}
+        max_bitrate_(6000),
+        min_bitrate_(3000) {
+    encoded_file_path_ = new char[512];
+  }
 
-  ~LocalDesktopCapturerParameters() {}
-  /**
-  @brief Get video is enabled or not for this stream.
-  @return true or false.
-  */
-  bool VideoEnabled() const { return video_enabled_; }
-  /**
-  @brief Get audio is enabled or not for this stream.
-  @return true or false.
-  */
-  bool AudioEnabled() const { return audio_enabled_; }
+  ~LocalDesktopCapturerParameters() { delete[] encoded_file_path_; }
+
   /// Get mouse cursor enabled state.
   bool CursorEnabled() const { return cursor_enabled_; }
   /**
@@ -108,26 +92,51 @@ class LocalDesktopCapturerParameters final {
 
   /// @brief scale width
   /// @param w
-  void Width(int w) { width_ = w; }
+  void SetWidth(int w) { width_ = w; }
   int Width() const { return width_; }
 
   /// @brief scale height
   /// @param h
-  void Height(int h) { height_ = h; }
+  void SetHeight(int h) { height_ = h; }
   int Height() const { return height_; }
+
+  /// @brief the path for encoder to save the ifv file
+  /// @param save_path
+  void SetEncodedFilePath(const char* save_path) {
+    if (save_path == nullptr)
+      return;
+
+    // reset first
+    memset(encoded_file_path_, 0, strlen(encoded_file_path_));
+    const size_t len = strlen(save_path);
+    // copy
+    strncpy(encoded_file_path_, save_path, len);
+    encoded_file_path_[len] = '\0';
+  }
+  const char* EncodedFilePath() const { return encoded_file_path_; }
+  // max bitrate for encoding
+  void SetMaxBitrate(int bitrate) { max_bitrate_ = bitrate; }
+  int MaxBitrate() const { return max_bitrate_; }
+  // min bitrate for encoding
+  void SetMinBitrate(int bitrate) { min_bitrate_ = bitrate; }
+  int MinBitrate() const { return min_bitrate_; }
 
   DesktopSourceType SourceType() const { return source_type_; }
   DesktopCapturePolicy CapturePolicy() const { return capture_policy_; }
-  /** @endcond */
+
  private:
-  bool video_enabled_;
-  bool audio_enabled_;
   bool cursor_enabled_;
+  DesktopSourceType source_type_;
+  DesktopCapturePolicy capture_policy_;
+  // frame info
   int fps_;
   int width_;
   int height_;
-  DesktopSourceType source_type_;
-  DesktopCapturePolicy capture_policy_;
+  // max & min bitrate(kilobits/sec)
+  int max_bitrate_;
+  int min_bitrate_;
+  // encoded video file saving path
+  char* encoded_file_path_;
 };
 
 class RTCDesktopCapturer : public RefCountInterface {
