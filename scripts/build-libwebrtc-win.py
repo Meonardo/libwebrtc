@@ -11,6 +11,8 @@ GN_ARGS = [
     'target_cpu="x64"',
     'is_component_build=false',
     'rtc_use_h264=true',
+    'use_lld=false',
+    'use_custom_libcxx=false',
     # 'rtc_libvpx_build_vp9=true',
     'ffmpeg_branding="Chrome"',
     'is_clang=true',
@@ -33,7 +35,7 @@ def gngen(scheme):
     print("GN args: ", flattened_args)
     print("output path: ", getoutputpath(scheme))
 
-    ret = subprocess.call(['gn.bat', 'gen', getoutputpath(scheme), '--args=%s' % flattened_args, '--ide=vs2019'],
+    ret = subprocess.call(['gn.bat', 'gen', getoutputpath(scheme), '--args=%s' % flattened_args, '--ide=vs'],
                           cwd=HOME_PATH, shell=False)
     if ret == 0:
         return True
