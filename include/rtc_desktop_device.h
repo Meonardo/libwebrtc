@@ -9,7 +9,7 @@ class MediaSource;
 class RTCDesktopCapturer;
 class RTCDesktopMediaList;
 
-class LocalDesktopCapturerObserver {
+class LocalDesktopCapturerDataSource {
  public:
   /**
   @brief Event callback for local screen stream to request for a source from
@@ -20,8 +20,7 @@ class LocalDesktopCapturerObserver {
   @param dest_source application will set this id to be used by it.
   */
   virtual void OnCaptureSourceNeeded(const SourceList& sources,
-                                     int& dest_source) {}
-  virtual ~LocalDesktopCapturerObserver() {}
+                                     int& dest_source) = 0;
 };
 
 /**
@@ -33,19 +32,12 @@ changed.
 class LocalDesktopCapturerParameters final {
  public:
   enum class DesktopCapturePolicy : int {
-    /// Default capture policy.
-    kDefault = 0,
     /// With this policy set, on windows, use DirectX for desktop capture if
     /// possisble.
     kEnableDirectX = 1,
-    /// With this policy set, enable platform specific window effects if
-    /// possible.
-    kEnableEffects = 2,
-    /// With this policy set, capturer will provide update region information to
-    /// caller.
-    kEnableUpdateDetection = 4,
-    /// With this policy set, capturer can send out scaled captured frame.
-    kEnableMagnification = 8
+    /// Use wgc capture if possible(this will show a yellow rectangle in Windows
+    /// 10).
+    kEnableWGC = 2,
   };
   enum class DesktopSourceType : int {
     /// Capture from whole screen
@@ -53,34 +45,22 @@ class LocalDesktopCapturerParameters final {
     /// Capture from application
     kApplication
   };
-  /**
-  @brief Initialize a LocalDesktopCapturerParameters.
-  @param audio_enabled Indicates if audio is enabled for this stream.
-  @param video_anabled Indicates if video is enabled for this stream.
-  @param soruce_type Indicates if capture from screen or an app.
-  @param capture_policy the OR of any of the DesktopCapturePolicy options.
-  */
-  LocalDesktopCapturerParameters(bool audio_enabled,
-                                 bool video_enabled,
-                                 bool cursor_enabled)
-      : video_enabled_(video_enabled),
-        audio_enabled_(audio_enabled),
-        cursor_enabled_(cursor_enabled),
-        fps_(30),
-        source_type_(DesktopSourceType::kFullScreen),
-        capture_policy_(DesktopCapturePolicy::kDefault) {}
 
-  ~LocalDesktopCapturerParameters() {}
-  /**
-  @brief Get video is enabled or not for this stream.
-  @return true or false.
-  */
-  bool VideoEnabled() const { return video_enabled_; }
-  /**
-  @brief Get audio is enabled or not for this stream.
-  @return true or false.
-  */
-  bool AudioEnabled() const { return audio_enabled_; }
+  LocalDesktopCapturerParameters(bool cursor_enabled)
+      : cursor_enabled_(cursor_enabled),
+        source_type_(DesktopSourceType::kFullScreen),
+        capture_policy_(DesktopCapturePolicy::kEnableDirectX),
+        fps_(30),
+        width_(0),
+        height_(0),
+        max_bitrate_(6000),
+        min_bitrate_(3000) {
+    encoded_file_path_ = new char[512];
+    memset(encoded_file_path_, 0, strlen(encoded_file_path_));
+  }
+
+  ~LocalDesktopCapturerParameters() { delete[] encoded_file_path_; }
+
   /// Get mouse cursor enabled state.
   bool CursorEnabled() const { return cursor_enabled_; }
   /**
@@ -105,16 +85,53 @@ class LocalDesktopCapturerParameters final {
   /** @cond */
   int Fps() const { return fps_; }
 
+  /// @brief scale width
+  /// @param w
+  void SetWidth(int w) { width_ = w; }
+  int Width() const { return width_; }
+
+  /// @brief scale height
+  /// @param h
+  void SetHeight(int h) { height_ = h; }
+  int Height() const { return height_; }
+
+  /// @brief the path for encoder to save the ivf file
+  /// @param save_path
+  void SetEncodedFilePath(const char* save_path) {
+    if (save_path == nullptr)
+      return;
+
+    // reset first
+    memset(encoded_file_path_, 0, strlen(encoded_file_path_));
+    const size_t len = strlen(save_path);
+    // copy
+    strncpy(encoded_file_path_, save_path, len);
+    encoded_file_path_[len] = '\0';
+  }
+  const char* EncodedFilePath() const { return encoded_file_path_; }
+  // max bitrate for encoding
+  void SetMaxBitrate(int bitrate) { max_bitrate_ = bitrate; }
+  int MaxBitrate() const { return max_bitrate_; }
+  // min bitrate for encoding
+  void SetMinBitrate(int bitrate) { min_bitrate_ = bitrate; }
+  int MinBitrate() const { return min_bitrate_; }
+
   DesktopSourceType SourceType() const { return source_type_; }
   DesktopCapturePolicy CapturePolicy() const { return capture_policy_; }
-  /** @endcond */
+
  private:
-  bool video_enabled_;
-  bool audio_enabled_;
   bool cursor_enabled_;
-  int fps_;
   DesktopSourceType source_type_;
   DesktopCapturePolicy capture_policy_;
+  // frame info
+  int fps_;
+  int width_;
+  int height_;
+  // max & min bitrate(kilobits/sec)
+  int max_bitrate_;
+  int min_bitrate_;
+  // encoded video file saving path
+  char* encoded_file_path_;
 };
 
 class RTCDesktopDevice : public RefCountInterface {

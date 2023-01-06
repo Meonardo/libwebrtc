@@ -82,7 +82,7 @@ class BasicScreenCapturer::BasicScreenCaptureThread
 /////////////////////////////////////////////////////////////////////
 BasicScreenCapturer::BasicScreenCapturer(
     webrtc::DesktopCaptureOptions options,
-    libwebrtc::LocalDesktopCapturerObserver* observer,
+    libwebrtc::LocalDesktopCapturerDataSource* observer,
     bool cursor_enabled)
     : screen_capture_thread_(nullptr),
       width_(0),
@@ -301,7 +301,7 @@ ScreenCaptureThread::~ScreenCaptureThread() {
 
 BasicWindowCapturer::BasicWindowCapturer(
     webrtc::DesktopCaptureOptions options,
-    libwebrtc::LocalDesktopCapturerObserver* observer,
+    libwebrtc::LocalDesktopCapturerDataSource* observer,
     bool cursor_enabled)
     : width_(0),
       height_(0),
