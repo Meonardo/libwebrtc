@@ -1,7 +1,7 @@
 #ifndef LIB_WEBRTC_LOCAL_SCREEN_CAPTURER_IMPL_HXX
 #define LIB_WEBRTC_LOCAL_SCREEN_CAPTURER_IMPL_HXX
 
-#include "local_screen_capturer.h"
+#include "local_desktop_capturer.h"
 #include "src/internal/base_desktop_capturer.h"
 #include "src/internal/video_capturer.h"
 
@@ -12,19 +12,19 @@ class MSDKVideoEncoder;
 }  // namespace owt
 
 namespace libwebrtc {
-class LocalScreenCapturerImpl
-    : public LocalScreenCapturer,
+class LocalDesktopCapturerImpl
+    : public LocalDesktopCapturer,
       public rtc::VideoSinkInterface<webrtc::VideoFrame>,
       public webrtc::EncodedImageCallback {
  public:
-  LocalScreenCapturerImpl(LocalDesktopCapturerObserver* capturer_observer);
-  virtual ~LocalScreenCapturerImpl();
+  LocalDesktopCapturerImpl(LocalDesktopCapturerDataSource* capturer_observer);
+  virtual ~LocalDesktopCapturerImpl();
 
   virtual bool StartCapturing(
-      LocalScreenEncodedImageCallback* image_callback,
+      LocalDesktopEncodedImageCallback* image_callback,
       std::shared_ptr<LocalDesktopCapturerParameters>) override;
   virtual bool StartCapturing(
-      LocalScreenRawFrameCallback* frame_callback,
+      LocalDesktopRawFrameCallback* frame_callback,
       std::shared_ptr<LocalDesktopCapturerParameters>) override;
   virtual bool StopCapturing(bool release_encoder) override;
 
@@ -35,12 +35,12 @@ class LocalScreenCapturerImpl
 
  private:
   // capturer
-  LocalDesktopCapturerObserver* capturer_observer_;
+  LocalDesktopCapturerDataSource* capturer_datasource_;
   rtc::scoped_refptr<owt::base::BasicScreenCapturer> capturer_;
   // encoder
   std::unique_ptr<owt::base::MSDKVideoEncoder> encoder_;
-  LocalScreenEncodedImageCallback* image_callback_;
-  LocalScreenRawFrameCallback* frame_callback_;
+  LocalDesktopEncodedImageCallback* image_callback_;
+  LocalDesktopRawFrameCallback* frame_callback_;
   bool encoder_initialized_;
   // frame type copied from `video_stream_encoder.h`
   std::vector<webrtc::VideoFrameType> next_frame_types_;

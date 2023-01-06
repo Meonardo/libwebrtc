@@ -8,7 +8,7 @@
 
 namespace libwebrtc {
 
-class LocalDesktopCapturerObserver {
+class LocalDesktopCapturerDataSource {
  public:
   /**
   @brief Event callback for local screen stream to request for a source from
@@ -31,19 +31,12 @@ changed.
 class LocalDesktopCapturerParameters final {
  public:
   enum class DesktopCapturePolicy : int {
-    /// Default capture policy.
-    kDefault = 0,
     /// With this policy set, on windows, use DirectX for desktop capture if
     /// possisble.
     kEnableDirectX = 1,
-    /// With this policy set, enable platform specific window effects if
-    /// possible.
-    kEnableEffects = 2,
-    /// With this policy set, capturer will provide update region information to
-    /// caller.
-    kEnableUpdateDetection = 4,
-    /// With this policy set, capturer can send out scaled captured frame.
-    kEnableMagnification = 8
+    /// Use wgc capture if possible(this will show a yellow rectangle in Windows
+    /// 10).
+    kEnableWGC = 2,
   };
   enum class DesktopSourceType : int {
     /// Capture from whole screen
@@ -55,13 +48,14 @@ class LocalDesktopCapturerParameters final {
   LocalDesktopCapturerParameters(bool cursor_enabled)
       : cursor_enabled_(cursor_enabled),
         source_type_(DesktopSourceType::kFullScreen),
-        capture_policy_(DesktopCapturePolicy::kDefault),
+        capture_policy_(DesktopCapturePolicy::kEnableDirectX),
         fps_(30),
         width_(0),
         height_(0),
         max_bitrate_(6000),
         min_bitrate_(3000) {
     encoded_file_path_ = new char[512];
+    memset(encoded_file_path_, 0, strlen(encoded_file_path_));
   }
 
   ~LocalDesktopCapturerParameters() { delete[] encoded_file_path_; }
@@ -100,7 +94,7 @@ class LocalDesktopCapturerParameters final {
   void SetHeight(int h) { height_ = h; }
   int Height() const { return height_; }
 
-  /// @brief the path for encoder to save the ifv file
+  /// @brief the path for encoder to save the ivf file
   /// @param save_path
   void SetEncodedFilePath(const char* save_path) {
     if (save_path == nullptr)
@@ -147,7 +141,7 @@ class RTCDesktopCapturer : public RefCountInterface {
 class RTCDesktopDevice : public RefCountInterface {
  public:
   virtual scoped_refptr<RTCDesktopCapturer> CreateDesktopCapturer(
-      LocalDesktopCapturerObserver* source_observer,
+      LocalDesktopCapturerDataSource* datasource,
       std::shared_ptr<LocalDesktopCapturerParameters> params) = 0;
 
  protected:

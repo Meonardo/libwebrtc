@@ -97,7 +97,7 @@ class BasicDesktopCapturer : public webrtc::VideoCaptureModule,
 class BasicScreenCapturer : public BasicDesktopCapturer {
  public:
   BasicScreenCapturer(webrtc::DesktopCaptureOptions options,
-                      libwebrtc::LocalDesktopCapturerObserver* observer,
+                      libwebrtc::LocalDesktopCapturerDataSource* observer,
                       bool cursor_enabled);
   virtual ~BasicScreenCapturer();
   virtual int32_t StartCapture(
@@ -135,7 +135,7 @@ class BasicScreenCapturer : public BasicDesktopCapturer {
   std::unique_ptr<webrtc::DesktopCapturer> screen_capturer_;
   webrtc::DesktopCaptureOptions screen_capture_options_;
   bool capture_started_ = false;
-  libwebrtc::LocalDesktopCapturerObserver* observer_;
+  libwebrtc::LocalDesktopCapturerDataSource* observer_;
   webrtc::Mutex lock_;
   RTC_DISALLOW_COPY_AND_ASSIGN(BasicScreenCapturer);
 };
@@ -147,7 +147,7 @@ class BasicScreenCapturer : public BasicDesktopCapturer {
 class BasicWindowCapturer : public BasicDesktopCapturer {
  public:
   BasicWindowCapturer(webrtc::DesktopCaptureOptions options,
-                      libwebrtc::LocalDesktopCapturerObserver* observer,
+                      libwebrtc::LocalDesktopCapturerDataSource* observer,
                       bool cursor_enabled);
   virtual ~BasicWindowCapturer();
 
@@ -204,7 +204,7 @@ class BasicWindowCapturer : public BasicDesktopCapturer {
   bool capture_started_ = false;
   bool quit_;
   webrtc::Mutex lock_;
-  libwebrtc::LocalDesktopCapturerObserver* observer_;
+  libwebrtc::LocalDesktopCapturerDataSource* observer_;
   RTC_DISALLOW_COPY_AND_ASSIGN(BasicWindowCapturer);
 };
 }  // namespace base

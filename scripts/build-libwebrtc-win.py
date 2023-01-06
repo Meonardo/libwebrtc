@@ -11,6 +11,7 @@ GN_ARGS = [
     'target_cpu="x64"',
     'is_component_build=false',
     'rtc_use_h264=true',
+    'rtc_enable_win_wgc=true',
     'use_lld=false',
     'use_custom_libcxx=false',
     # 'rtc_libvpx_build_vp9=true',

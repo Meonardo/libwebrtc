@@ -16,7 +16,7 @@ RTCDesktopDeviceImpl::~RTCDesktopDeviceImpl() {
 }
 
 scoped_refptr<RTCDesktopCapturer> RTCDesktopDeviceImpl::CreateDesktopCapturer(
-    LocalDesktopCapturerObserver* source_observer,
+    LocalDesktopCapturerDataSource* source_observer,
     std::shared_ptr<LocalDesktopCapturerParameters> params) {
   webrtc::internal::LocalDesktopCapturer* desktop_capturer =
       webrtc::internal::LocalDesktopCapturer::Create(params, source_observer);

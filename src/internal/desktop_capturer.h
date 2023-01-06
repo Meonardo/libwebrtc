@@ -15,7 +15,7 @@ class LocalDesktopCapturer
  public:
   static LocalDesktopCapturer* Create(
       std::shared_ptr<libwebrtc::LocalDesktopCapturerParameters> parameters,
-      libwebrtc::LocalDesktopCapturerObserver* observer);
+      libwebrtc::LocalDesktopCapturerDataSource* observer);
 
   LocalDesktopCapturer();
   virtual ~LocalDesktopCapturer();
@@ -25,7 +25,7 @@ class LocalDesktopCapturer
 
   bool Init(
       std::shared_ptr<libwebrtc::LocalDesktopCapturerParameters> parameters,
-      libwebrtc::LocalDesktopCapturerObserver* observer);
+      libwebrtc::LocalDesktopCapturerDataSource* observer);
   void Destroy();
 
   rtc::scoped_refptr<webrtc::VideoCaptureModule> vcm_;
@@ -36,7 +36,7 @@ class LocalDesktopCaptureTrackSource : public webrtc::VideoTrackSource {
  public:
   static rtc::scoped_refptr<LocalDesktopCaptureTrackSource> Create(
       std::shared_ptr<libwebrtc::LocalDesktopCapturerParameters> parameters,
-      libwebrtc::LocalDesktopCapturerObserver* observer) {
+      libwebrtc::LocalDesktopCapturerDataSource* observer) {
     std::unique_ptr<LocalDesktopCapturer> capturer;
     capturer =
         absl::WrapUnique(LocalDesktopCapturer::Create(parameters, observer));

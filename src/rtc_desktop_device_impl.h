@@ -26,7 +26,7 @@ class RTCDesktopDeviceImpl : public RTCDesktopDevice {
   ~RTCDesktopDeviceImpl();
 
   virtual scoped_refptr<RTCDesktopCapturer> CreateDesktopCapturer(
-      LocalDesktopCapturerObserver* source_observer,
+      LocalDesktopCapturerDataSource* source_observer,
       std::shared_ptr<LocalDesktopCapturerParameters> params) override;
 
  private:

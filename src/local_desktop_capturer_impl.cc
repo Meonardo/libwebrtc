@@ -1,22 +1,22 @@
-#include "src/local_screen_capturer_impl.h"
+#include "src/local_desktop_capturer_impl.h"
 #include "src/rtc_video_frame_impl.h"
 #include "src/win/msdkvideoencoder.h"
 #include "system_wrappers/include/cpu_info.h"
 
 namespace libwebrtc {
 // static method
-scoped_refptr<LocalScreenCapturer>
-LocalScreenCapturer::CreateLocalScreenCapturer(
-    LocalDesktopCapturerObserver* capturer_observer) {
-  scoped_refptr<LocalScreenCapturerImpl> capturer =
-      scoped_refptr<LocalScreenCapturerImpl>(
-          new RefCountedObject<LocalScreenCapturerImpl>(capturer_observer));
+scoped_refptr<LocalDesktopCapturer>
+LocalDesktopCapturer::CreateLocalDesktopCapturer(
+    LocalDesktopCapturerDataSource* datasource) {
+  scoped_refptr<LocalDesktopCapturerImpl> capturer =
+      scoped_refptr<LocalDesktopCapturerImpl>(
+          new RefCountedObject<LocalDesktopCapturerImpl>(datasource));
   return capturer;
 }
 
-LocalScreenCapturerImpl::LocalScreenCapturerImpl(
-    LocalDesktopCapturerObserver* capturer_observer)
-    : capturer_observer_(capturer_observer),
+LocalDesktopCapturerImpl::LocalDesktopCapturerImpl(
+    LocalDesktopCapturerDataSource* datasource)
+    : capturer_datasource_(datasource),
       encoder_(nullptr),
       image_callback_(nullptr),
       frame_callback_(nullptr),
@@ -26,16 +26,16 @@ LocalScreenCapturerImpl::LocalScreenCapturerImpl(
       min_bitrate_(3000),
       max_framerate_(30) {}
 
-LocalScreenCapturerImpl::~LocalScreenCapturerImpl() {
-  capturer_observer_ = nullptr;
+LocalDesktopCapturerImpl::~LocalDesktopCapturerImpl() {
+  capturer_datasource_ = nullptr;
   image_callback_ = nullptr;
   frame_callback_ = nullptr;
 
   StopCapturing(true);
 }
 
-bool LocalScreenCapturerImpl::StartCapturing(
-    LocalScreenEncodedImageCallback* image_callback,
+bool LocalDesktopCapturerImpl::StartCapturing(
+    LocalDesktopEncodedImageCallback* image_callback,
     std::shared_ptr<LocalDesktopCapturerParameters> parameters) {
   if (parameters == nullptr || image_callback == nullptr) {
     RTC_LOG(LS_ERROR) << "Must set `LocalDesktopCapturerParameters`!";
@@ -45,10 +45,18 @@ bool LocalScreenCapturerImpl::StartCapturing(
   if (capturer_ == nullptr) {
     webrtc::DesktopCaptureOptions options =
         webrtc::DesktopCaptureOptions::CreateDefault();
-    // tmp set directX to true
-    options.set_allow_directx_capturer(true);
+    // update capture method
+    if (parameters->CapturePolicy() ==
+        LocalDesktopCapturerParameters::DesktopCapturePolicy::kEnableDirectX) {
+      options.set_allow_directx_capturer(true);
+    } else if (parameters->CapturePolicy() ==
+               LocalDesktopCapturerParameters::DesktopCapturePolicy::
+                   kEnableWGC) {
+      options.set_allow_wgc_capturer(true);
+    }
+
     capturer_ = new rtc::RefCountedObject<owt::base::BasicScreenCapturer>(
-        options, capturer_observer_, parameters->CursorEnabled());
+        options, capturer_datasource_, parameters->CursorEnabled());
   }
 
   capturer_->RegisterCaptureDataCallback(this);
@@ -82,8 +90,8 @@ bool LocalScreenCapturerImpl::StartCapturing(
   return capturer_->CaptureStarted();
 }
 
-bool LocalScreenCapturerImpl::StartCapturing(
-    LocalScreenRawFrameCallback* frame_callback,
+bool LocalDesktopCapturerImpl::StartCapturing(
+    LocalDesktopRawFrameCallback* frame_callback,
     std::shared_ptr<LocalDesktopCapturerParameters> parameters) {
   if (parameters == nullptr || frame_callback == nullptr) {
     RTC_LOG(LS_ERROR) << "Must set `LocalDesktopCapturerParameters`!";
@@ -93,10 +101,17 @@ bool LocalScreenCapturerImpl::StartCapturing(
   if (capturer_ == nullptr) {
     webrtc::DesktopCaptureOptions options =
         webrtc::DesktopCaptureOptions::CreateDefault();
-    // tmp set directX to true
-    options.set_allow_directx_capturer(true);
+    // update capture method
+    if (parameters->CapturePolicy() ==
+        LocalDesktopCapturerParameters::DesktopCapturePolicy::kEnableDirectX) {
+      options.set_allow_directx_capturer(true);
+    } else if (parameters->CapturePolicy() ==
+               LocalDesktopCapturerParameters::DesktopCapturePolicy::
+                   kEnableWGC) {
+      options.set_allow_wgc_capturer(true);
+    }
     capturer_ = new rtc::RefCountedObject<owt::base::BasicScreenCapturer>(
-        options, capturer_observer_, parameters->CursorEnabled());
+        options, capturer_datasource_, parameters->CursorEnabled());
   }
 
   capturer_->RegisterCaptureDataCallback(this);
@@ -115,7 +130,7 @@ bool LocalScreenCapturerImpl::StartCapturing(
   return capturer_->CaptureStarted();
 }
 
-bool LocalScreenCapturerImpl::StopCapturing(bool release_encoder) {
+bool LocalDesktopCapturerImpl::StopCapturing(bool release_encoder) {
   if (capturer_ == nullptr)
     return false;
 
@@ -131,7 +146,7 @@ bool LocalScreenCapturerImpl::StopCapturing(bool release_encoder) {
   return true;
 }
 
-void LocalScreenCapturerImpl::OnFrame(const webrtc::VideoFrame& frame) {
+void LocalDesktopCapturerImpl::OnFrame(const webrtc::VideoFrame& frame) {
   // if registered raw-frame callback then it will not encode any frame
   if (frame_callback_ != nullptr) {
     auto frame_impl = scoped_refptr<VideoFrameBufferImpl>(
@@ -150,7 +165,7 @@ void LocalScreenCapturerImpl::OnFrame(const webrtc::VideoFrame& frame) {
   }
 }
 
-bool LocalScreenCapturerImpl::InitEncoder(int width, int height) {
+bool LocalDesktopCapturerImpl::InitEncoder(int width, int height) {
   // these settings now are const
   cricket::VideoCodec format = {0, "H264"};
   format.clockrate = 90000;
@@ -191,7 +206,7 @@ bool LocalScreenCapturerImpl::InitEncoder(int width, int height) {
   return true;
 }
 
-void LocalScreenCapturerImpl::ReleaseEncoder() {
+void LocalDesktopCapturerImpl::ReleaseEncoder() {
   if (!encoder_ || !encoder_initialized_) {
     return;
   }
@@ -201,7 +216,7 @@ void LocalScreenCapturerImpl::ReleaseEncoder() {
   RTC_LOG(LS_ERROR) << "Encoder released";
 }
 
-webrtc::EncodedImageCallback::Result LocalScreenCapturerImpl::OnEncodedImage(
+webrtc::EncodedImageCallback::Result LocalDesktopCapturerImpl::OnEncodedImage(
     const webrtc::EncodedImage& encoded_image,
     const webrtc::CodecSpecificInfo* codec_specific_info) {
   if (image_callback_ != nullptr) {
