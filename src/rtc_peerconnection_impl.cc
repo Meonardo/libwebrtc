@@ -245,7 +245,7 @@ void RTCPeerConnectionImpl::OnAddStream(
 
   remote_streams_.push_back(remote_stream);
 
-  if (observer_) {
+  if (observer_ != nullptr) {
     observer_->OnAddStream(remote_stream);
   }
 }
@@ -264,7 +264,7 @@ void RTCPeerConnectionImpl::OnRemoveStream(
   }
 
   if (nullptr != recv_stream) {
-    if (observer_) {
+    if (observer_ != nullptr) {
       observer_->OnRemoveStream(recv_stream);
     }
 
@@ -278,37 +278,43 @@ void RTCPeerConnectionImpl::OnDataChannel(
   data_channel_ = scoped_refptr<RTCDataChannelImpl>(
       new RefCountedObject<RTCDataChannelImpl>(rtc_data_channel));
 
-  if (observer_)
+  if (observer_ != nullptr)
     observer_->OnDataChannel(data_channel_);
 }
 
 void RTCPeerConnectionImpl::OnRenegotiationNeeded() {
-  if (observer_) {
+  if (observer_ != nullptr) {
     observer_->OnRenegotiationNeeded();
   }
 }
 
 void RTCPeerConnectionImpl::OnConnectionChange(
     webrtc::PeerConnectionInterface::PeerConnectionState new_state) {
-  if (observer_)
+  webrtc::MutexLock cs(callback_crt_sec_.get());
+  if (nullptr != observer_) {
+    RTC_LOG(LS_ERROR) << __FUNCTION__ << " " << new_state;
     observer_->OnPeerConnectionState(peer_connection_state_map[new_state]);
+  }
 }
 
 void RTCPeerConnectionImpl::OnIceGatheringChange(
     webrtc::PeerConnectionInterface::IceGatheringState new_state) {
-  if (observer_)
+  webrtc::MutexLock cs(callback_crt_sec_.get());
+  if (nullptr != observer_)
     observer_->OnIceGatheringState(ice_gathering_state_map[new_state]);
 }
 
 void RTCPeerConnectionImpl::OnIceConnectionChange(
     webrtc::PeerConnectionInterface::IceConnectionState new_state) {
-  if (observer_)
+  webrtc::MutexLock cs(callback_crt_sec_.get());
+  if (nullptr != observer_)
     observer_->OnIceConnectionState(ice_connection_state_map[new_state]);
 }
 
 void RTCPeerConnectionImpl::OnSignalingChange(
     webrtc::PeerConnectionInterface::SignalingState new_state) {
-  if (observer_)
+  webrtc::MutexLock cs(callback_crt_sec_.get());
+  if (nullptr != observer_)
     observer_->OnSignalingState(signaling_state_map[new_state]);
 }
 
@@ -324,7 +330,7 @@ void RTCPeerConnectionImpl::AddCandidate(const string mid,
 
 void RTCPeerConnectionImpl::OnIceCandidate(
     const webrtc::IceCandidateInterface* candidate) {
-  if (!rtc_peerconnection_)
+  if (rtc_peerconnection_ == nullptr)
     return;
 
 #if 0
@@ -341,18 +347,21 @@ void RTCPeerConnectionImpl::OnIceCandidate(
   }
 #endif
 
-  std::string cand_sdp;
-  if (observer_ && candidate->ToString(&cand_sdp)) {
-    SdpParseError error;
-    scoped_refptr<RTCIceCandidate> cand =
-        RTCIceCandidate::Create(cand_sdp.c_str(), candidate->sdp_mid().c_str(),
-                                candidate->sdp_mline_index(), &error);
-    observer_->OnIceCandidate(cand);
-  }
+  {
+    webrtc::MutexLock cs(callback_crt_sec_.get());
+    std::string cand_sdp;
+    if (observer_ != nullptr && candidate->ToString(&cand_sdp)) {
+      SdpParseError error;
+      scoped_refptr<RTCIceCandidate> cand = RTCIceCandidate::Create(
+          cand_sdp.c_str(), candidate->sdp_mid().c_str(),
+          candidate->sdp_mline_index(), &error);
+      observer_->OnIceCandidate(cand);
+    }
 
-  RTC_LOG(LS_INFO) << __FUNCTION__ << ", mid " << candidate->sdp_mid()
-                   << ", mline " << candidate->sdp_mline_index() << ", sdp"
-                   << cand_sdp;
+    RTC_LOG(LS_INFO) << __FUNCTION__ << ", mid " << candidate->sdp_mid()
+                     << ", mline " << candidate->sdp_mline_index() << ", sdp"
+                     << cand_sdp;
+  }
 }
 
 void RTCPeerConnectionImpl::RegisterRTCPeerConnectionObserver(

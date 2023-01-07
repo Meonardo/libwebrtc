@@ -8,7 +8,31 @@
 #include "api/peer_connection_interface.h"
 #include "rtc_base/synchronization/mutex.h"
 
+#include "src/win/videorendererd3d11.h"
+
 namespace libwebrtc {
+
+class VideoD3D11Renderer
+    : public RTCVideoRenderer<scoped_refptr<RTCVideoFrame>> {
+ public:
+  VideoD3D11Renderer(HWND hwnd, VideoFrameSizeChangeObserver* observer) {
+    d3d11_renderer_impl_ =
+        scoped_refptr<owt::base::WebrtcVideoRendererD3D11Impl>(
+            new RefCountedObject<owt::base::WebrtcVideoRendererD3D11Impl>(
+                hwnd, observer));
+  }
+
+  ~VideoD3D11Renderer() {}
+
+  void OnFrame(scoped_refptr<RTCVideoFrame> frame) override {
+    webrtc::VideoFrameBuffer* video_frame_buffer =
+        reinterpret_cast<webrtc::VideoFrameBuffer*>(frame->RawBuffer());
+    d3d11_renderer_impl_->OnFrame(video_frame_buffer);
+  }
+
+ private:
+  scoped_refptr<owt::base::WebrtcVideoRendererD3D11Impl> d3d11_renderer_impl_;
+};
 
 class VideoSinkAdapter : public rtc::VideoSinkInterface<webrtc::VideoFrame>,
                          public RefCountInterface {

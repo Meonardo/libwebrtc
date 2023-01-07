@@ -27,10 +27,27 @@
 #include "modules/desktop_capture/desktop_capturer.h"
 #include "modules/desktop_capture/desktop_frame.h"
 #include "rtc_base/thread.h"
+
 #include "src/internal/vcm_capturer.h"
 #include "src/internal/video_capturer.h"
 
+namespace webrtc {
+namespace internal {
+class LocalDesktopCapturer;
+}
+}  // namespace webrtc
+
 namespace libwebrtc {
+class RTCDesktopCapturerImpl2 : public RTCDesktopCapturer2 {
+ public:
+  RTCDesktopCapturerImpl2(
+      std::unique_ptr<webrtc::internal::LocalDesktopCapturer> video_capturer);
+
+  std::unique_ptr<webrtc::internal::LocalDesktopCapturer> desktop_capturer();
+
+ private:
+  std::unique_ptr<webrtc::internal::LocalDesktopCapturer> desktop_capturer_;
+};
 
 class RTCDesktopCapturerImpl : public RTCDesktopCapturer,
                                public webrtc::DesktopCapturer::Callback,

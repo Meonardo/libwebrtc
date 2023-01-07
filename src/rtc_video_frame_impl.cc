@@ -6,6 +6,8 @@
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
 
+#include "src/win/nativehandlebuffer.h"
+
 namespace libwebrtc {
 
 VideoFrameBufferImpl::VideoFrameBufferImpl(
@@ -15,6 +17,14 @@ VideoFrameBufferImpl::VideoFrameBufferImpl(
 VideoFrameBufferImpl::VideoFrameBufferImpl(
     rtc::scoped_refptr<webrtc::I420Buffer> frame_buffer)
     : buffer_(frame_buffer) {}
+
+VideoFrameBufferImpl::VideoFrameBufferImpl(
+    rtc::scoped_refptr<webrtc::NV12Buffer> frame_buffer)
+    : buffer_(frame_buffer) {}
+
+VideoFrameBufferImpl::VideoFrameBufferImpl(
+    rtc::scoped_refptr<owt::base::EncodedFrameBuffer> encoded_buffer)
+    : buffer_(encoded_buffer) {}
 
 VideoFrameBufferImpl::~VideoFrameBufferImpl() {}
 
@@ -34,27 +44,58 @@ int VideoFrameBufferImpl::height() const {
 }
 
 const uint8_t* VideoFrameBufferImpl::DataY() const {
-  return buffer_->GetI420()->DataY();
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12) {
+    return buffer_->GetNV12()->DataY();
+  } else {
+    return buffer_->GetI420()->DataY();
+  }
 }
 
 const uint8_t* VideoFrameBufferImpl::DataU() const {
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12) {
+    return buffer_->GetNV12()->DataUV();
+  }
   return buffer_->GetI420()->DataU();
 }
 
 const uint8_t* VideoFrameBufferImpl::DataV() const {
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12) {
+    return nullptr;
+  }
   return buffer_->GetI420()->DataV();
 }
 
 int VideoFrameBufferImpl::StrideY() const {
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12) {
+    return buffer_->GetNV12()->StrideY();
+  }
   return buffer_->GetI420()->StrideY();
 }
 
 int VideoFrameBufferImpl::StrideU() const {
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12) {
+    return buffer_->GetNV12()->StrideUV();
+  }
   return buffer_->GetI420()->StrideU();
 }
 
 int VideoFrameBufferImpl::StrideV() const {
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12) {
+    return 0;
+  }
   return buffer_->GetI420()->StrideV();
+}
+
+void* VideoFrameBufferImpl::RawBuffer() const {
+  return buffer_.get();
+}
+
+RTCVideoFrame::PixelFormat VideoFrameBufferImpl::PixFormat() const {
+  if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNV12)
+    return RTCVideoFrame::PixelFormat::kNV12;
+  else if (buffer_->type() == webrtc::VideoFrameBuffer::Type::kNative)
+    return RTCVideoFrame::PixelFormat::kNative;
+  return RTCVideoFrame::PixelFormat::kYV12;
 }
 
 int VideoFrameBufferImpl::ConvertToARGB(Type type,
@@ -157,6 +198,38 @@ scoped_refptr<RTCVideoFrame> RTCVideoFrame::Create(int width,
   scoped_refptr<VideoFrameBufferImpl> frame =
       scoped_refptr<VideoFrameBufferImpl>(
           new RefCountedObject<VideoFrameBufferImpl>(i420_buffer));
+  return frame;
+}
+
+scoped_refptr<RTCVideoFrame> RTCVideoFrame::Create(int width,
+                                                   int height,
+                                                   const uint8_t* data_y,
+                                                   const uint8_t* data_uv) {
+  rtc::scoped_refptr<webrtc::NV12Buffer> nv12_buffer =
+      webrtc::NV12Buffer::Create(width, height, width, width);
+
+  auto size_y = width * height;
+  memcpy(nv12_buffer->MutableDataY(), data_y, size_y);
+  memcpy(nv12_buffer->MutableDataY() + size_y, data_uv, size_y / 2);
+
+  scoped_refptr<VideoFrameBufferImpl> frame =
+      scoped_refptr<VideoFrameBufferImpl>(
+          new RefCountedObject<VideoFrameBufferImpl>(nv12_buffer));
+  return frame;
+}
+
+scoped_refptr<RTCVideoFrame> RTCVideoFrame::Create(uint8_t* data,
+                                                   size_t size,
+                                                   bool keyframe,
+                                                   size_t w,
+                                                   size_t h) {
+  rtc::scoped_refptr<owt::base::EncodedFrameBuffer> encoded_buffer =
+      rtc::make_ref_counted<owt::base::EncodedFrameBuffer>(data, size, keyframe,
+                                                           w, h);
+
+  scoped_refptr<VideoFrameBufferImpl> frame =
+      scoped_refptr<VideoFrameBufferImpl>(
+          new RefCountedObject<VideoFrameBufferImpl>(encoded_buffer));
   return frame;
 }
 

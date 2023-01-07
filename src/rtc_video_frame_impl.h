@@ -4,9 +4,12 @@
 #include "rtc_video_frame.h"
 
 #include "api/video/i420_buffer.h"
+#include "api/video/nv12_buffer.h"
 #include "api/video/video_frame_buffer.h"
 #include "api/video/video_rotation.h"
 #include "common_video/include/video_frame_buffer.h"
+
+#include "src/win/customizedencoderbufferhandle.h"
 
 namespace libwebrtc {
 
@@ -15,6 +18,12 @@ class VideoFrameBufferImpl : public RTCVideoFrame {
   VideoFrameBufferImpl(
       rtc::scoped_refptr<webrtc::VideoFrameBuffer> frame_buffer);
   VideoFrameBufferImpl(rtc::scoped_refptr<webrtc::I420Buffer> frame_buffer);
+
+  // create nv12 frame
+  VideoFrameBufferImpl(rtc::scoped_refptr<webrtc::NV12Buffer> frame_buffer);
+  // create encoded frame
+  VideoFrameBufferImpl(
+      rtc::scoped_refptr<owt::base::EncodedFrameBuffer> encoded_buffer);
 
   virtual ~VideoFrameBufferImpl();
 
@@ -30,6 +39,10 @@ class VideoFrameBufferImpl : public RTCVideoFrame {
   const uint8_t* DataU() const override;
 
   const uint8_t* DataV() const override;
+
+  void* RawBuffer() const override;
+
+  RTCVideoFrame::PixelFormat PixFormat() const override;
 
   int StrideY() const override;
 

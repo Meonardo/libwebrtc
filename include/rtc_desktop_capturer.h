@@ -9,6 +9,11 @@ namespace libwebrtc {
 
 class DesktopCapturerObserver;
 
+class RTCDesktopCapturer2 : public RefCountInterface {
+ public:
+  virtual ~RTCDesktopCapturer2() {}
+};
+
 class RTCDesktopCapturer : public RefCountInterface {
  public:
   enum CaptureState { CS_RUNNING, CS_STOPPED, CS_FAILED };

@@ -57,6 +57,10 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
       scoped_refptr<RTCDesktopCapturer> capturer,
       const string video_source_label,
       scoped_refptr<RTCMediaConstraints> constraints) override;
+  virtual scoped_refptr<RTCVideoSource> CreateDesktopSource(
+      scoped_refptr<RTCDesktopCapturer2> capturer,
+      const string video_source_label,
+      scoped_refptr<RTCMediaConstraints> constraints) override;
 #endif
   virtual scoped_refptr<RTCAudioTrack> CreateAudioTrack(
       scoped_refptr<RTCAudioSource> source,
@@ -66,8 +70,21 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
       scoped_refptr<RTCVideoSource> source,
       const string track_id) override;
 
+  // customized raw video frame track
+  virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(
+      owt::base::VideoFrameGeneratorInterface* v_frame_genrator,
+      const string track_id) override;
+  // customized encoded video packet track
+  virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(
+      owt::base::VideoEncoderInterface* encoder,
+      const string track_id) override;
+
   virtual scoped_refptr<RTCMediaStream> CreateStream(
       const string stream_id) override;
+
+  virtual RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>*
+  CreateVideoD3D11Renderer(HWND hwnd,
+                           VideoFrameSizeChangeObserver* observer) override;
 
   rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface>
   peer_connection_factory() {
@@ -86,6 +103,10 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
 #ifdef RTC_DESKTOP_DEVICE
   scoped_refptr<RTCVideoSource> CreateDesktopSource_d(
       scoped_refptr<RTCDesktopCapturer> capturer,
+      const char* video_source_label,
+      scoped_refptr<RTCMediaConstraints> constraints);
+  scoped_refptr<RTCVideoSource> CreateDesktopSource_d(
+      scoped_refptr<RTCDesktopCapturer2> capturer,
       const char* video_source_label,
       scoped_refptr<RTCMediaConstraints> constraints);
 #endif

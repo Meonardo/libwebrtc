@@ -7,6 +7,7 @@ namespace libwebrtc {
 
 class MediaSource;
 class RTCDesktopCapturer;
+class RTCDesktopCapturer2;
 class RTCDesktopMediaList;
 
 class LocalDesktopCapturerDataSource {
@@ -140,6 +141,10 @@ class RTCDesktopDevice : public RefCountInterface {
       scoped_refptr<MediaSource> source) = 0;
   virtual scoped_refptr<RTCDesktopMediaList> GetDesktopMediaList(
       DesktopType type) = 0;
+
+  virtual scoped_refptr<RTCDesktopCapturer2> CreateDesktopCapturer(
+      LocalDesktopCapturerDataSource* datasource,
+      std::shared_ptr<LocalDesktopCapturerParameters> params) = 0;
 
  protected:
   virtual ~RTCDesktopDevice() {}

@@ -10,7 +10,6 @@
 #endif
 #include "rtc_base/thread.h"
 #include "rtc_desktop_device.h"
-
 #include "rtc_desktop_media_list_impl.h"
 
 namespace libwebrtc {
@@ -25,6 +24,10 @@ class RTCDesktopDeviceImpl : public RTCDesktopDevice {
 
   scoped_refptr<RTCDesktopMediaList> GetDesktopMediaList(
       DesktopType type) override;
+
+  scoped_refptr<RTCDesktopCapturer2> CreateDesktopCapturer(
+      LocalDesktopCapturerDataSource* datasource,
+      std::shared_ptr<LocalDesktopCapturerParameters> params) override;
 
  private:
   rtc::Thread* signaling_thread_ = nullptr;

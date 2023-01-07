@@ -13,6 +13,9 @@
 #include "rtc_video_device.h"
 #include "rtc_video_source.h"
 
+#include "framegeneratorinterface.h"
+#include "videoencoderinterface.h"
+
 namespace libwebrtc {
 
 class RTCPeerConnection;
@@ -64,6 +67,10 @@ class RTCPeerConnectionFactory : public RefCountInterface {
       scoped_refptr<RTCDesktopCapturer> capturer,
       const string video_source_label,
       scoped_refptr<RTCMediaConstraints> constraints) = 0;
+  virtual scoped_refptr<RTCVideoSource> CreateDesktopSource(
+      scoped_refptr<RTCDesktopCapturer2> capturer,
+      const string video_source_label,
+      scoped_refptr<RTCMediaConstraints> constraints) = 0;
 #endif
   virtual scoped_refptr<RTCAudioTrack> CreateAudioTrack(
       scoped_refptr<RTCAudioSource> source,
@@ -73,8 +80,21 @@ class RTCPeerConnectionFactory : public RefCountInterface {
       scoped_refptr<RTCVideoSource> source,
       const string track_id) = 0;
 
+  // customized raw video frame track
+  virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(
+      owt::base::VideoFrameGeneratorInterface* v_frame_genrator,
+      const string track_id) = 0;
+  // customized encoded video packet track
+  virtual scoped_refptr<RTCVideoTrack> CreateVideoTrack(
+      owt::base::VideoEncoderInterface* encoder,
+      const string track_id) = 0;
+
   virtual scoped_refptr<RTCMediaStream> CreateStream(
       const string stream_id) = 0;
+
+  virtual RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>*
+  CreateVideoD3D11Renderer(HWND hwnd,
+                           VideoFrameSizeChangeObserver* observer) = 0;
 };
 
 }  // namespace libwebrtc

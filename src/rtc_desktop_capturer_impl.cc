@@ -13,17 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include "rtc_desktop_capturer_impl.h"
-
 #include "third_party/libyuv/include/libyuv.h"
 #ifdef WEBRTC_WIN
 #include "modules/desktop_capture/win/window_capture_utils.h"
 #endif
 
+#include "internal/desktop_capturer.h"
+#include "src/internal/base_desktop_capturer.h"
+
 namespace libwebrtc {
 
 enum { kCaptureDelay = 33, kCaptureMessageId = 1000 };
+
+RTCDesktopCapturerImpl2::RTCDesktopCapturerImpl2(
+    std::unique_ptr<webrtc::internal::LocalDesktopCapturer> video_capturer)
+    : desktop_capturer_(std::move(video_capturer)) {}
+
+std::unique_ptr<webrtc::internal::LocalDesktopCapturer>
+RTCDesktopCapturerImpl2::desktop_capturer() {
+  return std::unique_ptr<webrtc::internal::LocalDesktopCapturer>(
+      std::move(desktop_capturer_));
+}
 
 RTCDesktopCapturerImpl::RTCDesktopCapturerImpl(
     DesktopType type,

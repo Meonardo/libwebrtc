@@ -68,14 +68,76 @@ int32_t AudioDeviceImpl::SetRecordingDevice(uint16_t index) {
   });
 }
 
+int AudioDeviceImpl::RestartPlayoutDevice() {
+  return worker_thread_->Invoke<int16_t>(RTC_FROM_HERE, [&] {
+    RTC_DCHECK_RUN_ON(worker_thread_);
+    auto adm = reinterpret_cast<webrtc::AudioDeviceModuleForTest*>(
+        audio_device_module_.get());
+    if (adm != nullptr)
+      return adm->RestartPlayoutInternally();
+    return -1;
+  });
+}
+
+bool AudioDeviceImpl::RecordingIsInitialized() const {
+  return worker_thread_->Invoke<bool>(RTC_FROM_HERE, [&] {
+    RTC_DCHECK_RUN_ON(worker_thread_);
+
+    return audio_device_module_->RecordingIsInitialized();
+  });
+}
+
+bool AudioDeviceImpl::RestartRecorder() const {
+  return worker_thread_->Invoke<bool>(RTC_FROM_HERE, [&] {
+    RTC_DCHECK_RUN_ON(worker_thread_);
+
+    if (!audio_device_module_->Recording()) {
+      if (audio_device_module_->InitRecording() == 0) {
+        if (audio_device_module_->BuiltInAECIsAvailable() &&
+            !audio_device_module_->Playing()) {
+          if (!audio_device_module_->PlayoutIsInitialized()) {
+            audio_device_module_->InitPlayout();
+          }
+          audio_device_module_->StartPlayout();
+        }
+        audio_device_module_->StartRecording();
+      } else {
+        RTC_DLOG_F(LS_ERROR) << "Failed to initialize recording.";
+        return false;
+      }
+    }
+    return audio_device_module_->StartRecording() == 0;
+  });
+}
+
+bool AudioDeviceImpl::ToggleRecordingMute(bool mute) {
+  if (mute) {
+    return worker_thread_->Invoke<bool>(RTC_FROM_HERE, [&] {
+      RTC_DCHECK_RUN_ON(worker_thread_);
+
+      if (!audio_device_module_->Recording()) {
+        return false;
+      }
+      return audio_device_module_->StopRecording() == 0;
+    });
+  } else {
+    return RestartRecorder();
+  }
+}
+
+void AudioDeviceImpl::OnDevicesUpdated() {}
+
+void AudioDeviceImpl::OnDevicesChanged(AudioDeviceSink::EventType e,
+                                       AudioDeviceSink::DeviceType t,
+                                       const char* device_id) {
+  if (listener_)
+    listener_((RTCAudioDevice::EventType)e, (RTCAudioDevice::DeviceType)t,
+              device_id);
+}
+
 int32_t AudioDeviceImpl::OnDeviceChange(OnDeviceChangeCallback listener) {
   listener_ = listener;
   return 0;
-}
-
-void AudioDeviceImpl::OnDevicesUpdated() {
-  if (listener_)
-    listener_();
 }
 
 }  // namespace libwebrtc

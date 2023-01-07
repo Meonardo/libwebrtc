@@ -9,6 +9,8 @@ class RTCVideoFrame : public RefCountInterface {
  public:
   enum class Type { kARGB, kBGRA, kABGR, kRGBA };
 
+  enum class PixelFormat { kYV12 = 0, kNV12, kNative = 99 };
+
   enum VideoRotation {
     kVideoRotation_0 = 0,
     kVideoRotation_90 = 90,
@@ -19,6 +21,17 @@ class RTCVideoFrame : public RefCountInterface {
  public:
   LIB_WEBRTC_API static scoped_refptr<RTCVideoFrame>
   Create(int width, int height, const uint8_t* buffer, int length);
+
+  // create NV12 frame
+  LIB_WEBRTC_API static scoped_refptr<RTCVideoFrame>
+  Create(int width, int height, const uint8_t* data_y, const uint8_t* data_uv);
+
+  // create native frame(encoded)
+  LIB_WEBRTC_API static scoped_refptr<RTCVideoFrame> Create(uint8_t* data,
+                                                            size_t size,
+                                                            bool keyframe,
+                                                            size_t w,
+                                                            size_t h);
 
   LIB_WEBRTC_API static scoped_refptr<RTCVideoFrame> Create(
       int width,
@@ -31,6 +44,8 @@ class RTCVideoFrame : public RefCountInterface {
       int stride_v);
 
   virtual scoped_refptr<RTCVideoFrame> Copy() = 0;
+
+  virtual PixelFormat PixFormat() const = 0;
 
   // The resolution of the frame in pixels. For formats where some planes are
   // subsampled, this is the highest-resolution plane.
@@ -49,6 +64,8 @@ class RTCVideoFrame : public RefCountInterface {
   virtual int StrideY() const = 0;
   virtual int StrideU() const = 0;
   virtual int StrideV() const = 0;
+
+  virtual void* RawBuffer() const = 0;
 
   virtual int ConvertToARGB(Type type,
                             uint8_t* dst_argb,

@@ -284,6 +284,44 @@ RTCPeerConnectionFactoryImpl::CreateDesktopSource_d(
 
   return source;
 }
+
+scoped_refptr<RTCVideoSource> RTCPeerConnectionFactoryImpl::CreateDesktopSource(
+    scoped_refptr<RTCDesktopCapturer2> capturer,
+    const string video_source_label,
+    scoped_refptr<RTCMediaConstraints> constraints) {
+  if (rtc::Thread::Current() != signaling_thread_) {
+    scoped_refptr<RTCVideoSource> source =
+        signaling_thread_->Invoke<scoped_refptr<RTCVideoSource>>(
+            RTC_FROM_HERE, [this, capturer, video_source_label, constraints] {
+              return CreateDesktopSource_d(
+                  capturer, to_std_string(video_source_label).c_str(),
+                  constraints);
+            });
+    return source;
+  }
+
+  return CreateDesktopSource_d(
+      capturer, to_std_string(video_source_label).c_str(), constraints);
+}
+
+scoped_refptr<RTCVideoSource>
+RTCPeerConnectionFactoryImpl::CreateDesktopSource_d(
+    scoped_refptr<RTCDesktopCapturer2> capturer,
+    const char* video_source_label,
+    scoped_refptr<RTCMediaConstraints> constraints) {
+  RTCDesktopCapturerImpl2* capturer_impl =
+      static_cast<RTCDesktopCapturerImpl2*>(capturer.get());
+
+  rtc::scoped_refptr<webrtc::VideoTrackSourceInterface> rtc_source_track =
+      rtc::make_ref_counted<webrtc::internal::LocalDesktopCaptureTrackSource>(
+          capturer_impl->desktop_capturer());
+
+  scoped_refptr<RTCVideoSourceImpl> source = scoped_refptr<RTCVideoSourceImpl>(
+      new RefCountedObject<RTCVideoSourceImpl>(rtc_source_track));
+
+  return source;
+}
+
 #endif
 
 scoped_refptr<RTCMediaStream> RTCPeerConnectionFactoryImpl::CreateStream(
@@ -323,6 +361,40 @@ scoped_refptr<RTCVideoTrack> RTCPeerConnectionFactoryImpl::CreateVideoTrack(
   return video_track;
 }
 
+scoped_refptr<RTCVideoTrack> RTCPeerConnectionFactoryImpl::CreateVideoTrack(
+    owt::base::VideoFrameGeneratorInterface* video_frame_genrator,
+    const string track_id) {
+  rtc::scoped_refptr<owt::base::LocalRawCaptureTrackSource> video_device =
+      owt::base::LocalRawCaptureTrackSource::Create(video_frame_genrator);
+  if (video_device == nullptr)
+    return nullptr;
+
+  rtc::scoped_refptr<webrtc::VideoTrackInterface> rtc_video_track =
+      rtc_peerconnection_factory_->CreateVideoTrack(to_std_string(track_id),
+                                                    video_device.get());
+
+  scoped_refptr<VideoTrackImpl> video_track = scoped_refptr<VideoTrackImpl>(
+      new RefCountedObject<VideoTrackImpl>(rtc_video_track));
+  return video_track;
+}
+
+scoped_refptr<RTCVideoTrack> RTCPeerConnectionFactoryImpl::CreateVideoTrack(
+    owt::base::VideoEncoderInterface* encoder,
+    const string track_id) {
+  rtc::scoped_refptr<owt::base::LocalEncodedCaptureTrackSource> video_device =
+      owt::base::LocalEncodedCaptureTrackSource::Create(encoder);
+  if (video_device == nullptr)
+    return nullptr;
+
+  rtc::scoped_refptr<webrtc::VideoTrackInterface> rtc_video_track =
+      rtc_peerconnection_factory_->CreateVideoTrack(to_std_string(track_id),
+                                                    video_device.get());
+
+  scoped_refptr<VideoTrackImpl> video_track = scoped_refptr<VideoTrackImpl>(
+      new RefCountedObject<VideoTrackImpl>(rtc_video_track));
+  return video_track;
+}
+
 scoped_refptr<RTCAudioTrack> RTCPeerConnectionFactoryImpl::CreateAudioTrack(
     scoped_refptr<RTCAudioSource> source,
     const string track_id) {
@@ -336,6 +408,13 @@ scoped_refptr<RTCAudioTrack> RTCPeerConnectionFactoryImpl::CreateAudioTrack(
   scoped_refptr<AudioTrackImpl> track = scoped_refptr<AudioTrackImpl>(
       new RefCountedObject<AudioTrackImpl>(audio_track));
   return track;
+}
+
+RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>*
+RTCPeerConnectionFactoryImpl::CreateVideoD3D11Renderer(
+    HWND hwnd,
+    VideoFrameSizeChangeObserver* observer) {
+  return new VideoD3D11Renderer(hwnd, observer);
 }
 
 }  // namespace libwebrtc

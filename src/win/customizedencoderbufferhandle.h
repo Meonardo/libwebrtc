@@ -58,7 +58,8 @@ class EncodedFrameBuffer : public VideoFrameBuffer {
       delete native_handle_;
       native_handle_ = nullptr;
     }
-    free(buffer_);
+    if (buffer_ != nullptr)
+      free(buffer_);
   }
 
   Type type() const override { return Type::kNative; }
