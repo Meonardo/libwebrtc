@@ -32,6 +32,8 @@ namespace libwebrtc {
 
 static bool hardware_acceleration_enabled_;
 static bool customized_video_encoder_enabled_;
+static std::shared_ptr<owt::base::AudioFrameGeneratorInterface> audio_framer_ =
+    nullptr;
 
 void GlobalConfiguration::SetVideoHardwareAccelerationEnabled(bool enabled) {
   hardware_acceleration_enabled_ = enabled;
@@ -45,6 +47,25 @@ void GlobalConfiguration::SetCustomizedVideoEncoderEnabled(bool enabled) {
 }
 bool GlobalConfiguration::GetCustomizedVideoEncoderEnabled() {
   return customized_video_encoder_enabled_;
+}
+
+void GlobalConfiguration::SetCustomizedAudioInputEnabled(
+    bool enabled,
+    std::shared_ptr<owt::base::AudioFrameGeneratorInterface> audio_framer) {
+  if (enabled) {
+    audio_framer_ = audio_framer;
+  } else {
+    audio_framer_.reset();
+  }
+}
+
+bool GlobalConfiguration::GetCustomizedAudioInputEnabled() {
+  return audio_framer_ != nullptr;
+}
+
+std::shared_ptr<owt::base::AudioFrameGeneratorInterface>
+GlobalConfiguration::GetAudioFrameGenerator() {
+  return audio_framer_;
 }
 
 std::unique_ptr<webrtc::VideoEncoderFactory> CreateCustomVideoEncoderFactory() {
@@ -134,11 +155,20 @@ bool RTCPeerConnectionFactoryImpl::Terminate() {
 
 void RTCPeerConnectionFactoryImpl::CreateAudioDeviceModule_w() {
   if (!audio_device_module_) {
-    com_initializer_ = std::make_unique<webrtc::ScopedCOMInitializer>(
-        webrtc::ScopedCOMInitializer::kMTA);
-    if (com_initializer_->Succeeded()) {
-      audio_device_module_ = webrtc::CreateWindowsCoreAudioAudioDeviceModule(
-          task_queue_factory_.get());
+    if (GlobalConfiguration::GetCustomizedAudioInputEnabled()) {
+      audio_device_module_ =
+          worker_thread_->Invoke<rtc::scoped_refptr<webrtc::AudioDeviceModule>>(
+              RTC_FROM_HERE, [] {
+                return owt::base::CustomizedAudioDeviceModule::Create(
+                    GlobalConfiguration::GetAudioFrameGenerator());
+              });
+    } else {
+      com_initializer_ = std::make_unique<webrtc::ScopedCOMInitializer>(
+          webrtc::ScopedCOMInitializer::kMTA);
+      if (com_initializer_->Succeeded()) {
+        audio_device_module_ = webrtc::CreateWindowsCoreAudioAudioDeviceModule(
+            task_queue_factory_.get());
+      }
     }
   }
 }

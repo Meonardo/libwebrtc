@@ -106,7 +106,7 @@ class LocalDesktopCapturerParameters final {
     memset(encoded_file_path_, 0, strlen(encoded_file_path_));
     const size_t len = strlen(save_path);
     // copy
-    strncpy(encoded_file_path_, save_path, len);
+    strncpy_s(encoded_file_path_, len, save_path, len);
     encoded_file_path_[len] = '\0';
   }
   const char* EncodedFilePath() const { return encoded_file_path_; }

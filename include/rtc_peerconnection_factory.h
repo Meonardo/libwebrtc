@@ -28,6 +28,12 @@ class GlobalConfiguration {
   LIB_WEBRTC_API static bool GetVideoHardwareAccelerationEnabled();
   LIB_WEBRTC_API static void SetCustomizedVideoEncoderEnabled(bool enabled);
   LIB_WEBRTC_API static bool GetCustomizedVideoEncoderEnabled();
+  LIB_WEBRTC_API static void SetCustomizedAudioInputEnabled(
+      bool enabled,
+      std::shared_ptr<owt::base::AudioFrameGeneratorInterface> audio_framer);
+  LIB_WEBRTC_API static bool GetCustomizedAudioInputEnabled();
+  LIB_WEBRTC_API static std::shared_ptr<owt::base::AudioFrameGeneratorInterface>
+  GetAudioFrameGenerator();
 };
 
 class VideoFrameSizeChangeObserver {

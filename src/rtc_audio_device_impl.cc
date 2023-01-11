@@ -15,11 +15,17 @@ AudioDeviceImpl::~AudioDeviceImpl() {
 }
 
 int16_t AudioDeviceImpl::PlayoutDevices() {
-  return audio_device_module_->PlayoutDevices();
+  return worker_thread_->Invoke<int16_t>(RTC_FROM_HERE, [&] {
+    RTC_DCHECK_RUN_ON(worker_thread_);
+    return audio_device_module_->PlayoutDevices();
+  });
 }
 
 int16_t AudioDeviceImpl::RecordingDevices() {
-  return audio_device_module_->RecordingDevices();
+  return worker_thread_->Invoke<int16_t>(RTC_FROM_HERE, [&] {
+    RTC_DCHECK_RUN_ON(worker_thread_);
+    return audio_device_module_->RecordingDevices();
+  });
 }
 
 int32_t AudioDeviceImpl::PlayoutDeviceName(uint16_t index,

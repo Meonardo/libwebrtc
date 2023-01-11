@@ -7,6 +7,13 @@
 #include "stdint.h"
 namespace owt {
 namespace base {
+
+// `owt::base::CustomizedAudioCapturer` impls this interface
+class AudioFrameReceiverInterface {
+ public:
+  virtual void OnFrame(const uint8_t* data, size_t samples_per_channel) = 0;
+};
+
 /**
  @brief frame generator interface for audio
  @details Sample rate and channel numbers cannot be changed once the generator
@@ -29,7 +36,17 @@ class AudioFrameGeneratorInterface {
   virtual int GetSampleRate() = 0;
   /// Get numbers of channel for frames generated.
   virtual int GetChannelNumber() = 0;
+  /// pass the receiver to whom will send audio frames
+  virtual void SetAudioFrameReceiver(AudioFrameReceiverInterface* receiver) = 0;
+
   virtual ~AudioFrameGeneratorInterface() {}
+};
+
+class AudioFrameFeeder : public AudioFrameGeneratorInterface {
+  virtual uint32_t GenerateFramesForNext10Ms(uint8_t* buffer,
+                                             const uint32_t capacity) override {
+    return 0;
+  }
 };
 
 // `owt::base::CustomizedFramesCapturer` impls this interface

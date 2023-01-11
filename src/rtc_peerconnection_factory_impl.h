@@ -18,6 +18,7 @@
 #include "src/internal/desktop_capturer.h"
 #endif
 
+#include "src/win/customizedaudiodevicemodule.h"
 #include "modules/audio_device/win/audio_device_core_win.h"
 
 namespace libwebrtc {
