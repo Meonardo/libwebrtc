@@ -20,9 +20,11 @@ using namespace webrtc;
  audio input.
  @details CustomizedADM does not support audio output yet.
  */
-class CustomizedAudioDeviceModule : public webrtc::AudioDeviceModule {
+class CustomizedAudioDeviceModule : public webrtc::AudioDeviceModule,
+                                    public AudioFrameReceiverInterface {
  public:
-  CustomizedAudioDeviceModule();
+  CustomizedAudioDeviceModule(
+      std::shared_ptr<AudioFrameGeneratorInterface> frame_generator);
   virtual ~CustomizedAudioDeviceModule();
   // Factory methods (resource allocation/deallocation)
   static rtc::scoped_refptr<AudioDeviceModule> Create(
@@ -107,26 +109,27 @@ class CustomizedAudioDeviceModule : public webrtc::AudioDeviceModule {
   int32_t EnableBuiltInNS(bool enable) override;
 
   int32_t SetAudioDeviceSink(AudioDeviceSink* sink) const override;
-// Only supported on iOS.
-#if defined(WEBRTC_IOS)
-  int GetPlayoutAudioParameters(AudioParameters* params) const override;
-  int GetRecordAudioParameters(AudioParameters* params) const override;
-#endif  // WEBRTC_IOS
+
+  void OnFrame(const uint8_t* data, size_t samples_per_channel) override;
+
  private:
-  int32_t CreateCustomizedAudioDevice(
-      std::shared_ptr<AudioFrameGeneratorInterface> frame_generator);
-  int32_t AttachAudioBuffer();
   void CreateOutputAdm();
-  webrtc::Mutex _critSect;
-  webrtc::Mutex _critSectEventCb;
-  webrtc::Mutex _critSectAudioCb;
+  webrtc::Mutex crit_sect_;
+  webrtc::Mutex crit_sect_event_cb_;
+  webrtc::Mutex crit_sect_audio_cb_;
+
   std::unique_ptr<webrtc::TaskQueueFactory> task_queue_factory_;
-  AudioDeviceGeneric* _ptrAudioDevice;
-  AudioDeviceBuffer* _ptrAudioDeviceBuffer;
-  int64_t _lastProcessTime;
-  bool _initialized;
+  int64_t last_process_time_;
+  bool initialized_;
   // Default internal adm for playout.
-  rtc::scoped_refptr<webrtc::AudioDeviceModule> _outputAdm;
+  rtc::scoped_refptr<webrtc::AudioDeviceModule> output_adm_;
+
+  // Audio transport
+  std::shared_ptr<AudioFrameGeneratorInterface> frame_generator_;
+  AudioTransport* audio_transport_;
+  uint8_t pending_[640 * 2 * 2];
+  size_t pending_length_;
+  bool recording_ = false;
 };
 }  // namespace base
 }  // namespace owt

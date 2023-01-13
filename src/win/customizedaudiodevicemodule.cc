@@ -13,583 +13,354 @@
 #include "modules/audio_device/audio_device_config.h"
 #include "modules/audio_device/audio_device_impl.h"
 #include "modules/audio_device/include/fake_audio_device.h"
+#include "rtc_base/logging.h"
 #include "rtc_base/ref_counted_object.h"
 #include "rtc_base/time_utils.h"
-#include "src/win/customizedaudiocapturer.h"
 
 // Code partly borrowed from WebRTC project's audio device moudule
 // implementation.
 #define CHECK_INITIALIZED() \
   {                         \
-    if (!_initialized) {    \
+    if (!initialized_) {    \
       return -1;            \
     };                      \
   }
 #define CHECK_INITIALIZED_BOOL() \
   {                              \
-    if (!_initialized) {         \
+    if (!initialized_) {         \
       return false;              \
     };                           \
   }
 
 namespace owt {
 namespace base {
-// ============================================================================
-//                                   Static methods
-// ============================================================================
-// ----------------------------------------------------------------------------
-//  CustomizedAudioDeviceModule::Create()
-// ----------------------------------------------------------------------------
+
 rtc::scoped_refptr<AudioDeviceModule> CustomizedAudioDeviceModule::Create(
     std::shared_ptr<AudioFrameGeneratorInterface> frame_generator) {
   // Create the generic ref counted implementation.
   rtc::scoped_refptr<CustomizedAudioDeviceModule> audioDevice(
-      rtc::make_ref_counted<CustomizedAudioDeviceModule>());
-  // Create the customized implementation.
-  if (audioDevice->CreateCustomizedAudioDevice(frame_generator) == -1) {
-    return nullptr;
-  }
-  // Ensure that the generic audio buffer can communicate with the
-  // platform-specific parts.
-  if (audioDevice->AttachAudioBuffer() == -1) {
-    return nullptr;
-  }
+      rtc::make_ref_counted<CustomizedAudioDeviceModule>(frame_generator));
+
   return audioDevice;
 }
-// ============================================================================
-//                            Construction & Destruction
-// ============================================================================
-// ----------------------------------------------------------------------------
-//  CustomizedAudioDeviceModule - ctor
-// ----------------------------------------------------------------------------
-CustomizedAudioDeviceModule::CustomizedAudioDeviceModule()
-    : task_queue_factory_(webrtc::CreateDefaultTaskQueueFactory()),
-      _ptrAudioDevice(nullptr),
-      _ptrAudioDeviceBuffer(
-          new webrtc::AudioDeviceBuffer(task_queue_factory_.get())),
-      _lastProcessTime(rtc::TimeMillis()),
-      _initialized(false) {
+
+CustomizedAudioDeviceModule::CustomizedAudioDeviceModule(
+    std::shared_ptr<AudioFrameGeneratorInterface> frame_generator)
+    : last_process_time_(rtc::TimeMillis()),
+      initialized_(false),
+      frame_generator_(frame_generator),
+      audio_transport_(nullptr),
+      pending_length_(0) {
+  task_queue_factory_ = webrtc::CreateDefaultTaskQueueFactory();
   CreateOutputAdm();
 }
-// ----------------------------------------------------------------------------
-//  CreateCustomizedAudioDevice
-// ----------------------------------------------------------------------------
-int32_t CustomizedAudioDeviceModule::CreateCustomizedAudioDevice(
-    std::shared_ptr<AudioFrameGeneratorInterface> frame_generator) {
-  AudioDeviceGeneric* ptrAudioDevice(nullptr);
-  ptrAudioDevice = new CustomizedAudioCapturer(frame_generator);
-  _ptrAudioDevice = ptrAudioDevice;
-  return 0;
-}
-// ----------------------------------------------------------------------------
-//  AttachAudioBuffer
-//
-//  Install "bridge" between the platform implementation and the generic
-//  implementation. The "child" shall set the native sampling rate and the
-//  number of channels in this function call.
-// ----------------------------------------------------------------------------
-int32_t CustomizedAudioDeviceModule::AttachAudioBuffer() {
-  _ptrAudioDevice->AttachAudioBuffer(_ptrAudioDeviceBuffer);
-  return 0;
-}
-// ----------------------------------------------------------------------------
-//  ~CustomizedAudioDeviceModule - dtor
-// ----------------------------------------------------------------------------
-CustomizedAudioDeviceModule::~CustomizedAudioDeviceModule() {
-  if (_ptrAudioDevice) {
-    delete _ptrAudioDevice;
-    _ptrAudioDevice = nullptr;
-  }
-  if (_ptrAudioDeviceBuffer) {
-    delete _ptrAudioDeviceBuffer;
-    _ptrAudioDeviceBuffer = nullptr;
-  }
-}
-// ============================================================================
-//                                    Public API
-// ============================================================================
-// ----------------------------------------------------------------------------
-//  ActiveAudioLayer
-// ----------------------------------------------------------------------------
+
+CustomizedAudioDeviceModule::~CustomizedAudioDeviceModule() {}
+
 int32_t CustomizedAudioDeviceModule::ActiveAudioLayer(
     AudioLayer* audioLayer) const {
-  AudioLayer activeAudio;
-  if (_ptrAudioDevice->ActiveAudioLayer(activeAudio) == -1) {
-    return -1;
-  }
-  *audioLayer = activeAudio;
   return 0;
 }
-// ----------------------------------------------------------------------------
-//  Init
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::Init() {
-  if (_initialized)
+  if (initialized_)
     return 0;
-  if (!_ptrAudioDevice)
+  if (!output_adm_ || output_adm_->Init() == -1)
     return -1;
-  if (_ptrAudioDevice->Init() != AudioDeviceGeneric::InitStatus::OK) {
-    return -1;
-  }
-  if (!_outputAdm || _outputAdm->Init() == -1)
-    return -1;
-  _initialized = true;
+  initialized_ = true;
   return 0;
 }
-// ----------------------------------------------------------------------------
-//  Terminate
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::Terminate() {
-  if (!_initialized)
+  if (!initialized_)
     return 0;
-  if (_ptrAudioDevice->Terminate() == -1) {
+  if (!output_adm_ || output_adm_->Terminate() == -1)
     return -1;
-  }
-  if (!_outputAdm || _outputAdm->Terminate() == -1)
-    return -1;
-  _initialized = false;
+  initialized_ = false;
   return 0;
 }
-// ----------------------------------------------------------------------------
-//  Initialized
-// ----------------------------------------------------------------------------
+
 bool CustomizedAudioDeviceModule::Initialized() const {
-  return (_initialized && _outputAdm->Initialized());
+  return (initialized_ && output_adm_->Initialized());
 }
-// ----------------------------------------------------------------------------
-//  InitSpeaker
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::InitSpeaker() {
-  return (_outputAdm->InitSpeaker());
+  return (output_adm_->InitSpeaker());
 }
-// ----------------------------------------------------------------------------
-//  InitMicrophone
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::InitMicrophone() {
   CHECK_INITIALIZED();
-  return (_ptrAudioDevice->InitMicrophone());
+  return 0;
 }
-// ----------------------------------------------------------------------------
-//  SpeakerVolumeIsAvailable
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SpeakerVolumeIsAvailable(bool* available) {
-  return _outputAdm->SpeakerVolumeIsAvailable(available);
+  return output_adm_->SpeakerVolumeIsAvailable(available);
 }
-// ----------------------------------------------------------------------------
-//  SetSpeakerVolume
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SetSpeakerVolume(uint32_t volume) {
-  return (_outputAdm->SetSpeakerVolume(volume));
+  return (output_adm_->SetSpeakerVolume(volume));
 }
-// ----------------------------------------------------------------------------
-//  SpeakerVolume
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SpeakerVolume(uint32_t* volume) const {
-  return _outputAdm->SpeakerVolume(volume);
+  return output_adm_->SpeakerVolume(volume);
 }
-// ----------------------------------------------------------------------------
-//  SpeakerIsInitialized
-// ----------------------------------------------------------------------------
+
 bool CustomizedAudioDeviceModule::SpeakerIsInitialized() const {
-  return _outputAdm->SpeakerIsInitialized();
+  return output_adm_->SpeakerIsInitialized();
 }
-// ----------------------------------------------------------------------------
-//  MicrophoneIsInitialized
-// ----------------------------------------------------------------------------
+
 bool CustomizedAudioDeviceModule::MicrophoneIsInitialized() const {
   CHECK_INITIALIZED_BOOL();
-  bool isInitialized = _ptrAudioDevice->MicrophoneIsInitialized();
-  return (isInitialized);
+  return false;
 }
-// ----------------------------------------------------------------------------
-//  MaxSpeakerVolume
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::MaxSpeakerVolume(
     uint32_t* maxVolume) const {
-  return _outputAdm->MaxSpeakerVolume(maxVolume);
+  return output_adm_->MaxSpeakerVolume(maxVolume);
 }
-// ----------------------------------------------------------------------------
-//  MinSpeakerVolume
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::MinSpeakerVolume(
     uint32_t* minVolume) const {
-  return _outputAdm->MinSpeakerVolume(minVolume);
+  return output_adm_->MinSpeakerVolume(minVolume);
 }
-// ----------------------------------------------------------------------------
-//  SpeakerMuteIsAvailable
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SpeakerMuteIsAvailable(bool* available) {
-  return _outputAdm->SpeakerMuteIsAvailable(available);
+  return output_adm_->SpeakerMuteIsAvailable(available);
 }
-// ----------------------------------------------------------------------------
-//  SetSpeakerMute
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SetSpeakerMute(bool enable) {
-  return _outputAdm->SetSpeakerMute(enable);
+  return output_adm_->SetSpeakerMute(enable);
 }
-// ----------------------------------------------------------------------------
-//  SpeakerMute
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SpeakerMute(bool* enabled) const {
-  return _outputAdm->SpeakerMute(enabled);
+  return output_adm_->SpeakerMute(enabled);
 }
-// ----------------------------------------------------------------------------
-//  MicrophoneMuteIsAvailable
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::MicrophoneMuteIsAvailable(
     bool* available) {
-  CHECK_INITIALIZED();
-  bool isAvailable(0);
-  if (_ptrAudioDevice->MicrophoneMuteIsAvailable(isAvailable) == -1) {
-    return -1;
-  }
-  *available = isAvailable;
-  return (0);
+  CHECK_INITIALIZED()
+  return -1;
 }
-// ----------------------------------------------------------------------------
-//  SetMicrophoneMute
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SetMicrophoneMute(bool enable) {
   CHECK_INITIALIZED();
-  return (_ptrAudioDevice->SetMicrophoneMute(enable));
+  return -1;
 }
-// ----------------------------------------------------------------------------
-//  MicrophoneMute
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::MicrophoneMute(bool* enabled) const {
   CHECK_INITIALIZED();
-  bool muted(false);
-  if (_ptrAudioDevice->MicrophoneMute(muted) == -1) {
-    return -1;
-  }
-  *enabled = muted;
-  return (0);
+  return -1;
 }
-// ----------------------------------------------------------------------------
-//  MicrophoneVolumeIsAvailable
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::MicrophoneVolumeIsAvailable(
     bool* available) {
   CHECK_INITIALIZED();
-  bool isAvailable(0);
-  if (_ptrAudioDevice->MicrophoneVolumeIsAvailable(isAvailable) == -1) {
-    return -1;
-  }
-  *available = isAvailable;
-  return (0);
+  return -1;
 }
-// ----------------------------------------------------------------------------
-//  SetMicrophoneVolume
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SetMicrophoneVolume(uint32_t volume) {
   CHECK_INITIALIZED();
-  return (_ptrAudioDevice->SetMicrophoneVolume(volume));
+  return -1;
 }
-// ----------------------------------------------------------------------------
-//  MicrophoneVolume
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::MicrophoneVolume(uint32_t* volume) const {
   CHECK_INITIALIZED();
-  uint32_t level(0);
-  if (_ptrAudioDevice->MicrophoneVolume(level) == -1) {
-    return -1;
-  }
-  *volume = level;
-  return (0);
+  return -1;
 }
-// ----------------------------------------------------------------------------
-//  StereoRecordingIsAvailable
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::StereoRecordingIsAvailable(
     bool* available) const {
   CHECK_INITIALIZED();
-  bool isAvailable(0);
-  if (_ptrAudioDevice->StereoRecordingIsAvailable(isAvailable) == -1) {
-    return -1;
-  }
-  *available = isAvailable;
-  return (0);
-}
-// ----------------------------------------------------------------------------
-//  SetStereoRecording
-// ----------------------------------------------------------------------------
-int32_t CustomizedAudioDeviceModule::SetStereoRecording(bool enable) {
-  CHECK_INITIALIZED();
-  if (_ptrAudioDevice->RecordingIsInitialized()) {
-    return -1;
-  }
-  if (_ptrAudioDevice->SetStereoRecording(enable) == -1) {
-    return -1;
-  }
-  int8_t nChannels(1);
-  if (enable) {
-    nChannels = 2;
-  }
-  _ptrAudioDeviceBuffer->SetRecordingChannels(nChannels);
   return 0;
 }
-// ----------------------------------------------------------------------------
-//  StereoRecording
-// ----------------------------------------------------------------------------
+
+int32_t CustomizedAudioDeviceModule::SetStereoRecording(bool enable) {
+  CHECK_INITIALIZED();
+  return 0;
+}
+
 int32_t CustomizedAudioDeviceModule::StereoRecording(bool* enabled) const {
   CHECK_INITIALIZED();
-  bool stereo(false);
-  if (_ptrAudioDevice->StereoRecording(stereo) == -1) {
-    return -1;
-  }
-  *enabled = stereo;
-  return (0);
+  return 0;
 }
-// ----------------------------------------------------------------------------
-//  StereoPlayoutIsAvailable
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::StereoPlayoutIsAvailable(
     bool* available) const {
-  return _outputAdm->StereoPlayoutIsAvailable(available);
+  return output_adm_->StereoPlayoutIsAvailable(available);
 }
-// ----------------------------------------------------------------------------
-//  SetStereoPlayout
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SetStereoPlayout(bool enable) {
-  return _outputAdm->SetStereoPlayout(enable);
+  return output_adm_->SetStereoPlayout(enable);
 }
-// ----------------------------------------------------------------------------
-//  StereoPlayout
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::StereoPlayout(bool* enabled) const {
-  return _outputAdm->StereoPlayout(enabled);
+  return output_adm_->StereoPlayout(enabled);
 }
-// ----------------------------------------------------------------------------
-//  PlayoutIsAvailable
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::PlayoutIsAvailable(bool* available) {
-  return _outputAdm->PlayoutIsAvailable(available);
+  return output_adm_->PlayoutIsAvailable(available);
 }
-// ----------------------------------------------------------------------------
-//  RecordingIsAvailable
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::RecordingIsAvailable(bool* available) {
   CHECK_INITIALIZED();
-  bool isAvailable(0);
-  if (_ptrAudioDevice->RecordingIsAvailable(isAvailable) == -1) {
-    return -1;
-  }
-  *available = isAvailable;
-  return (0);
+  return frame_generator_ != nullptr;
 }
-// ----------------------------------------------------------------------------
-//  MaxMicrophoneVolume
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::MaxMicrophoneVolume(
     uint32_t* maxVolume) const {
   CHECK_INITIALIZED();
-  uint32_t maxVol(0);
-  if (_ptrAudioDevice->MaxMicrophoneVolume(maxVol) == -1) {
-    return -1;
-  }
-  *maxVolume = maxVol;
-  return (0);
+  return -1;
 }
-// ----------------------------------------------------------------------------
-//  MinMicrophoneVolume
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::MinMicrophoneVolume(
     uint32_t* minVolume) const {
   CHECK_INITIALIZED();
-  uint32_t minVol(0);
-  if (_ptrAudioDevice->MinMicrophoneVolume(minVol) == -1) {
-    return -1;
-  }
-  *minVolume = minVol;
-  return (0);
+  return -1;
 }
 
-// ----------------------------------------------------------------------------
-//  PlayoutDevices
-// ----------------------------------------------------------------------------
 int16_t CustomizedAudioDeviceModule::PlayoutDevices() {
-  return _outputAdm->PlayoutDevices();
+  return output_adm_->PlayoutDevices();
 }
-// ----------------------------------------------------------------------------
-//  SetPlayoutDevice I (II)
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SetPlayoutDevice(uint16_t index) {
-  return _outputAdm->SetPlayoutDevice(index);
+  return output_adm_->SetPlayoutDevice(index);
 }
-// ----------------------------------------------------------------------------
-//  SetPlayoutDevice II (II)
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SetPlayoutDevice(
     WindowsDeviceType device) {
-  return _outputAdm->SetPlayoutDevice(device);
+  return output_adm_->SetPlayoutDevice(device);
 }
-// ----------------------------------------------------------------------------
-//  PlayoutDeviceName
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::PlayoutDeviceName(
     uint16_t index,
     char name[kAdmMaxDeviceNameSize],
     char guid[kAdmMaxGuidSize]) {
-  return _outputAdm->PlayoutDeviceName(index, name, guid);
+  return output_adm_->PlayoutDeviceName(index, name, guid);
 }
-// ----------------------------------------------------------------------------
-//  RecordingDeviceName
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::RecordingDeviceName(
     uint16_t index,
     char name[kAdmMaxDeviceNameSize],
     char guid[kAdmMaxGuidSize]) {
   CHECK_INITIALIZED();
-  if (name == NULL) {
-    return -1;
+  const char* kName = "customized_audio_device";
+  const char* kGuid = "customized_audio_device_unique_id";
+  if (index < 1) {
+    memset(name, 0, kAdmMaxDeviceNameSize);
+    memset(guid, 0, kAdmMaxGuidSize);
+    memcpy(name, kName, strlen(kName));
+    memcpy(guid, kGuid, strlen(guid));
+    return 0;
   }
-  if (_ptrAudioDevice->RecordingDeviceName(index, name, guid) == -1) {
-    return -1;
-  }
-  return (0);
+  return -1;
 }
-// ----------------------------------------------------------------------------
-//  RecordingDevices
-// ----------------------------------------------------------------------------
+
 int16_t CustomizedAudioDeviceModule::RecordingDevices() {
   CHECK_INITIALIZED();
-  uint16_t nRecordingDevices = _ptrAudioDevice->RecordingDevices();
-  return ((int16_t)nRecordingDevices);
+  return 1;
 }
-// ----------------------------------------------------------------------------
-//  SetRecordingDevice I (II)
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SetRecordingDevice(uint16_t index) {
   CHECK_INITIALIZED();
-  return (_ptrAudioDevice->SetRecordingDevice(index));
+  return -1;
 }
-// ----------------------------------------------------------------------------
-//  SetRecordingDevice II (II)
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::SetRecordingDevice(
     WindowsDeviceType device) {
-  if (device == kDefaultDevice) {
-  } else {
-  }
   CHECK_INITIALIZED();
-  return (_ptrAudioDevice->SetRecordingDevice(device));
+  return -1;
 }
-// ----------------------------------------------------------------------------
-//  InitPlayout
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::InitPlayout() {
-  return _outputAdm->InitPlayout();
+  return output_adm_->InitPlayout();
 }
-// ----------------------------------------------------------------------------
-//  InitRecording
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::InitRecording() {
   CHECK_INITIALIZED();
-  return (_ptrAudioDevice->InitRecording());
+  return 0;
 }
-// ----------------------------------------------------------------------------
-//  PlayoutIsInitialized
-// ----------------------------------------------------------------------------
+
 bool CustomizedAudioDeviceModule::PlayoutIsInitialized() const {
-  return _outputAdm->PlayoutIsInitialized();
+  return output_adm_->PlayoutIsInitialized();
 }
-// ----------------------------------------------------------------------------
-//  RecordingIsInitialized
-// ----------------------------------------------------------------------------
+
 bool CustomizedAudioDeviceModule::RecordingIsInitialized() const {
   CHECK_INITIALIZED_BOOL();
-  return (_ptrAudioDevice->RecordingIsInitialized());
+  return true;
 }
-// ----------------------------------------------------------------------------
-//  StartPlayout
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::StartPlayout() {
-  return (_outputAdm->StartPlayout());
+  return (output_adm_->StartPlayout());
 }
-// ----------------------------------------------------------------------------
-//  StopPlayout
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::StopPlayout() {
-  return (_outputAdm->StopPlayout());
+  return (output_adm_->StopPlayout());
 }
-// ----------------------------------------------------------------------------
-//  Playing
-// ----------------------------------------------------------------------------
+
 bool CustomizedAudioDeviceModule::Playing() const {
-  return (_outputAdm->Playing());
+  return (output_adm_->Playing());
 }
-// ----------------------------------------------------------------------------
-//  StartRecording
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::StartRecording() {
   CHECK_INITIALIZED();
-  _ptrAudioDeviceBuffer->StartRecording();
-  return (_ptrAudioDevice->StartRecording());
+  webrtc::MutexLock lock(&crit_sect_);
+  frame_generator_->SetAudioFrameReceiver(this);
+  recording_ = true;
+  return 0;
 }
-// ----------------------------------------------------------------------------
-//  StopRecording
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::StopRecording() {
   CHECK_INITIALIZED();
-  _ptrAudioDeviceBuffer->StopRecording();
-  return (_ptrAudioDevice->StopRecording());
+  recording_ = false;
+  webrtc::MutexLock lock(&crit_sect_);
+  frame_generator_->SetAudioFrameReceiver(nullptr);
+  return 0;
 }
-// ----------------------------------------------------------------------------
-//  Recording
-// ----------------------------------------------------------------------------
+
 bool CustomizedAudioDeviceModule::Recording() const {
   CHECK_INITIALIZED_BOOL();
-  return (_ptrAudioDevice->Recording());
+  return recording_;
 }
-// ----------------------------------------------------------------------------
-//  RegisterAudioCallback
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::RegisterAudioCallback(
     AudioTransport* audioCallback) {
-  webrtc::MutexLock lock(&_critSectAudioCb);
-  _ptrAudioDeviceBuffer->RegisterAudioCallback(audioCallback);
-  return _outputAdm->RegisterAudioCallback(audioCallback);
+  webrtc::MutexLock lock(&crit_sect_audio_cb_);
+  audio_transport_ = audioCallback;
+  return output_adm_->RegisterAudioCallback(audioCallback);
 }
-// ----------------------------------------------------------------------------
-//  PlayoutDelay
-// ----------------------------------------------------------------------------
+
 int32_t CustomizedAudioDeviceModule::PlayoutDelay(uint16_t* delayMS) const {
-  return _outputAdm->PlayoutDelay(delayMS);
+  return output_adm_->PlayoutDelay(delayMS);
 }
+
 bool CustomizedAudioDeviceModule::BuiltInAECIsAvailable() const {
   CHECK_INITIALIZED_BOOL();
-  return _ptrAudioDevice->BuiltInAECIsAvailable();
+  return false;
 }
+
 int32_t CustomizedAudioDeviceModule::EnableBuiltInAEC(bool enable) {
   CHECK_INITIALIZED();
-  return _ptrAudioDevice->EnableBuiltInAEC(enable);
+  return -1;
 }
+
 bool CustomizedAudioDeviceModule::BuiltInAGCIsAvailable() const {
   CHECK_INITIALIZED_BOOL();
-  return _ptrAudioDevice->BuiltInAGCIsAvailable();
+  return false;
 }
+
 int32_t CustomizedAudioDeviceModule::EnableBuiltInAGC(bool enable) {
-  CHECK_INITIALIZED();
-  return _ptrAudioDevice->EnableBuiltInAGC(enable);
+  return -1;
 }
+
 bool CustomizedAudioDeviceModule::BuiltInNSIsAvailable() const {
   CHECK_INITIALIZED_BOOL();
-  return _ptrAudioDevice->BuiltInNSIsAvailable();
+  return false;
 }
+
 int32_t CustomizedAudioDeviceModule::EnableBuiltInNS(bool enable) {
   CHECK_INITIALIZED();
-  return _ptrAudioDevice->EnableBuiltInNS(enable);
+  return -1;
 }
-#if defined(WEBRTC_IOS)
-int CustomizedAudioDeviceModule::GetPlayoutAudioParameters(
-    AudioParameters* params) const {
-  return _outputAdm->GetPlayoutAudioParameters(params);
-}
-int CustomizedAudioDeviceModule::GetRecordAudioParameters(
-    AudioParameters* params) const {
-  return _ptrAudioDevice->GetRecordAudioParameters(params);
-}
-#endif  // WEBRTC_IOS
 
 int32_t CustomizedAudioDeviceModule::SetAudioDeviceSink(
     AudioDeviceSink* sink) const {
@@ -597,14 +368,67 @@ int32_t CustomizedAudioDeviceModule::SetAudioDeviceSink(
 }
 
 void CustomizedAudioDeviceModule::CreateOutputAdm() {
-  if (_outputAdm == nullptr) {
+  if (output_adm_ == nullptr) {
 #if defined(WEBRTC_INCLUDE_INTERNAL_AUDIO_DEVICE)
-    _outputAdm = webrtc::AudioDeviceModuleImpl::Create(
+    output_adm_ = webrtc::AudioDeviceModuleImpl::Create(
         AudioDeviceModule::kPlatformDefaultAudio, task_queue_factory_.get());
 #else
-    _outputAdm = rtc::scoped_refptr<webrtc::FakeAudioDeviceModule>(
+    output_adm_ = rtc::scoped_refptr<webrtc::FakeAudioDeviceModule>(
         rtc::make_ref_counted<webrtc::FakeAudioDeviceModule>());
 #endif
+  }
+}
+
+void CustomizedAudioDeviceModule::OnFrame(const uint8_t* data,
+                                          size_t samples_per_channel) {
+  {
+    webrtc::MutexLock lock(&crit_sect_);
+    if (!recording_ || !audio_transport_) {
+      RTC_LOG(LS_WARNING) << "Recording not started yet...";
+      return;
+    }
+  }
+
+  // This info is set on the stream before starting capture
+  size_t channels = frame_generator_->GetChannelNumber();
+  uint32_t sample_rate = frame_generator_->GetSampleRate();
+  size_t sample_size = 2;
+  // Get chunk for 10ms
+  size_t chunk = (sample_rate / 100);
+
+  size_t i = 0;
+  uint32_t level;
+
+  // Check if we had pending chunks
+  if (pending_length_) {
+    // Copy missing chunks
+    i = chunk - pending_length_;
+    memcpy(pending_ + pending_length_ * sample_size * channels, data,
+           i * sample_size * channels);
+    // Add sent
+    audio_transport_->RecordedDataIsAvailable(
+        pending_, chunk, sample_size * channels, channels, sample_rate, 0, 0, 0,
+        false, level);
+    // No pending chunks
+    pending_length_ = 0;
+  }
+
+  // Send all possible full chunks
+  while (i + chunk < samples_per_channel) {
+    // Send them
+    audio_transport_->RecordedDataIsAvailable(
+        data + i * sample_size * channels, chunk, sample_size * channels,
+        channels, sample_rate, 0, 0, 0, false, level);
+    i += chunk;
+  }
+
+  // If there are missing chunks
+  if (i != samples_per_channel) {
+    // Calculate pending chunks
+    pending_length_ = samples_per_channel - i;
+    // Copy chunks to pending buffer
+    memcpy(pending_, data + i * sample_size * channels,
+           pending_length_ * sample_size * channels);
   }
 }
 
