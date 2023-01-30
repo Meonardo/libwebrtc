@@ -26,9 +26,11 @@ class CustomizedAudioDeviceModule : public webrtc::AudioDeviceModule,
   CustomizedAudioDeviceModule(
       std::shared_ptr<AudioFrameGeneratorInterface> frame_generator);
   virtual ~CustomizedAudioDeviceModule();
+
   // Factory methods (resource allocation/deallocation)
   static rtc::scoped_refptr<AudioDeviceModule> Create(
       std::shared_ptr<AudioFrameGeneratorInterface> frame_generator);
+
   // Retrieve the currently utilized audio layer
   int32_t ActiveAudioLayer(AudioLayer* audioLayer) const override;
   // Full-duplex transportation of PCM audio

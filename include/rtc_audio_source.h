@@ -8,6 +8,11 @@ namespace libwebrtc {
 class RTCAudioSource : public RefCountInterface {
  public:
   virtual void SetVolume(double v) = 0;
+  virtual void OnAudioData(uint8_t* data,
+                           int64_t timestamp,
+                           size_t frames,
+                           uint32_t sample_rate,
+                           size_t num_channels) = 0;
 
  protected:
   virtual ~RTCAudioSource() {}

@@ -18,8 +18,8 @@
 #include "src/internal/desktop_capturer.h"
 #endif
 
-#include "src/win/customizedaudiodevicemodule.h"
 #include "modules/audio_device/win/audio_device_core_win.h"
+#include "src/win/customizedaudiodevicemodule.h"
 
 namespace libwebrtc {
 
@@ -47,6 +47,8 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
 
   virtual scoped_refptr<RTCAudioSource> CreateAudioSource(
       const string audio_source_label) override;
+  virtual scoped_refptr<RTCAudioSource> CreateCustomAudioSource(
+      const string audio_source_label) override;
 
   virtual scoped_refptr<RTCVideoSource> CreateVideoSource(
       scoped_refptr<RTCVideoCapturer> capturer,
@@ -64,6 +66,9 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
       scoped_refptr<RTCMediaConstraints> constraints) override;
 #endif
   virtual scoped_refptr<RTCAudioTrack> CreateAudioTrack(
+      scoped_refptr<RTCAudioSource> source,
+      const string track_id) override;
+  virtual scoped_refptr<RTCAudioTrack> CreateCustomAudioTrack(
       scoped_refptr<RTCAudioSource> source,
       const string track_id) override;
 

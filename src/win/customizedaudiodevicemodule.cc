@@ -203,7 +203,7 @@ int32_t CustomizedAudioDeviceModule::PlayoutIsAvailable(bool* available) {
 
 int32_t CustomizedAudioDeviceModule::RecordingIsAvailable(bool* available) {
   CHECK_INITIALIZED();
-  return frame_generator_ != nullptr;
+  return 1;
 }
 
 int32_t CustomizedAudioDeviceModule::MaxMicrophoneVolume(
@@ -304,7 +304,7 @@ bool CustomizedAudioDeviceModule::Playing() const {
 int32_t CustomizedAudioDeviceModule::StartRecording() {
   CHECK_INITIALIZED();
   webrtc::MutexLock lock(&crit_sect_);
-  frame_generator_->SetAudioFrameReceiver(this);
+  //frame_generator_->SetAudioFrameReceiver(this);
   recording_ = true;
   return 0;
 }
@@ -313,7 +313,7 @@ int32_t CustomizedAudioDeviceModule::StopRecording() {
   CHECK_INITIALIZED();
   recording_ = false;
   webrtc::MutexLock lock(&crit_sect_);
-  frame_generator_->SetAudioFrameReceiver(nullptr);
+  //frame_generator_->SetAudioFrameReceiver(nullptr);
   return 0;
 }
 

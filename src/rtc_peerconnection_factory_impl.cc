@@ -32,6 +32,7 @@ namespace libwebrtc {
 
 static bool hardware_acceleration_enabled_;
 static bool customized_video_encoder_enabled_;
+static bool customized_audio_input_enabled_;
 static std::shared_ptr<owt::base::AudioFrameGeneratorInterface> audio_framer_ =
     nullptr;
 
@@ -49,23 +50,12 @@ bool GlobalConfiguration::GetCustomizedVideoEncoderEnabled() {
   return customized_video_encoder_enabled_;
 }
 
-void GlobalConfiguration::SetCustomizedAudioInputEnabled(
-    bool enabled,
-    std::shared_ptr<owt::base::AudioFrameGeneratorInterface> audio_framer) {
-  if (enabled) {
-    audio_framer_ = audio_framer;
-  } else {
-    audio_framer_.reset();
-  }
+void GlobalConfiguration::SetCustomizedAudioInputEnabled(bool enabled) {
+  customized_audio_input_enabled_ = enabled;
 }
 
 bool GlobalConfiguration::GetCustomizedAudioInputEnabled() {
-  return audio_framer_ != nullptr;
-}
-
-std::shared_ptr<owt::base::AudioFrameGeneratorInterface>
-GlobalConfiguration::GetAudioFrameGenerator() {
-  return audio_framer_;
+  return customized_audio_input_enabled_;
 }
 
 std::unique_ptr<webrtc::VideoEncoderFactory> CreateCustomVideoEncoderFactory() {
@@ -159,8 +149,7 @@ void RTCPeerConnectionFactoryImpl::CreateAudioDeviceModule_w() {
       audio_device_module_ =
           worker_thread_->Invoke<rtc::scoped_refptr<webrtc::AudioDeviceModule>>(
               RTC_FROM_HERE, [] {
-                return owt::base::CustomizedAudioDeviceModule::Create(
-                    GlobalConfiguration::GetAudioFrameGenerator());
+                return owt::base::CustomizedAudioDeviceModule::Create(nullptr);
               });
     } else {
       com_initializer_ = std::make_unique<webrtc::ScopedCOMInitializer>(
@@ -230,6 +219,17 @@ scoped_refptr<RTCAudioSource> RTCPeerConnectionFactoryImpl::CreateAudioSource(
 
   scoped_refptr<RTCAudioSourceImpl> source = scoped_refptr<RTCAudioSourceImpl>(
       new RefCountedObject<RTCAudioSourceImpl>(rtc_source_track));
+  return source;
+}
+
+scoped_refptr<RTCAudioSource>
+RTCPeerConnectionFactoryImpl::CreateCustomAudioSource(
+    const string audio_source_label) {
+  rtc::scoped_refptr<RTCCustomAudioSource> audio_source =
+      RTCCustomAudioSource::Create();
+
+  scoped_refptr<RTCAudioSourceImpl> source = scoped_refptr<RTCAudioSourceImpl>(
+      new RefCountedObject<RTCAudioSourceImpl>(audio_source));
   return source;
 }
 
@@ -434,6 +434,23 @@ scoped_refptr<RTCAudioTrack> RTCPeerConnectionFactoryImpl::CreateAudioTrack(
   rtc::scoped_refptr<webrtc::AudioTrackInterface> audio_track(
       rtc_peerconnection_factory_->CreateAudioTrack(
           to_std_string(track_id), source_impl->rtc_audio_source().get()));
+
+  scoped_refptr<AudioTrackImpl> track = scoped_refptr<AudioTrackImpl>(
+      new RefCountedObject<AudioTrackImpl>(audio_track));
+  return track;
+}
+
+scoped_refptr<RTCAudioTrack>
+RTCPeerConnectionFactoryImpl::CreateCustomAudioTrack(
+    scoped_refptr<RTCAudioSource> source,
+    const string track_id) {
+  RTCAudioSourceImpl* source_impl =
+      static_cast<RTCAudioSourceImpl*>(source.get());
+
+  rtc::scoped_refptr<webrtc::AudioTrackInterface> audio_track(
+      rtc_peerconnection_factory_->CreateAudioTrack(
+          to_std_string(track_id),
+          source_impl->customized_audio_source().get()));
 
   scoped_refptr<AudioTrackImpl> track = scoped_refptr<AudioTrackImpl>(
       new RefCountedObject<AudioTrackImpl>(audio_track));

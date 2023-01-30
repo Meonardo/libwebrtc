@@ -28,12 +28,8 @@ class GlobalConfiguration {
   LIB_WEBRTC_API static bool GetVideoHardwareAccelerationEnabled();
   LIB_WEBRTC_API static void SetCustomizedVideoEncoderEnabled(bool enabled);
   LIB_WEBRTC_API static bool GetCustomizedVideoEncoderEnabled();
-  LIB_WEBRTC_API static void SetCustomizedAudioInputEnabled(
-      bool enabled,
-      std::shared_ptr<owt::base::AudioFrameGeneratorInterface> audio_framer);
+  LIB_WEBRTC_API static void SetCustomizedAudioInputEnabled(bool enabled);
   LIB_WEBRTC_API static bool GetCustomizedAudioInputEnabled();
-  LIB_WEBRTC_API static std::shared_ptr<owt::base::AudioFrameGeneratorInterface>
-  GetAudioFrameGenerator();
 };
 
 class VideoFrameSizeChangeObserver {
@@ -63,6 +59,8 @@ class RTCPeerConnectionFactory : public RefCountInterface {
 #endif
   virtual scoped_refptr<RTCAudioSource> CreateAudioSource(
       const string audio_source_label) = 0;
+  virtual scoped_refptr<RTCAudioSource> CreateCustomAudioSource(
+      const string audio_source_label) = 0;
 
   virtual scoped_refptr<RTCVideoSource> CreateVideoSource(
       scoped_refptr<RTCVideoCapturer> capturer,
@@ -79,6 +77,9 @@ class RTCPeerConnectionFactory : public RefCountInterface {
       scoped_refptr<RTCMediaConstraints> constraints) = 0;
 #endif
   virtual scoped_refptr<RTCAudioTrack> CreateAudioTrack(
+      scoped_refptr<RTCAudioSource> source,
+      const string track_id) = 0;
+  virtual scoped_refptr<RTCAudioTrack> CreateCustomAudioTrack(
       scoped_refptr<RTCAudioSource> source,
       const string track_id) = 0;
 
