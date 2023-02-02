@@ -56,8 +56,9 @@ class LocalDesktopCapturerParameters final {
         height_(0),
         max_bitrate_(6000),
         min_bitrate_(3000) {
-    encoded_file_path_ = new char[512];
-    memset(encoded_file_path_, 0, strlen(encoded_file_path_));
+    const size_t file_path_len = 512;
+    encoded_file_path_ = new char[file_path_len];
+    memset(encoded_file_path_, 0, file_path_len);
   }
 
   ~LocalDesktopCapturerParameters() { delete[] encoded_file_path_; }
@@ -106,7 +107,7 @@ class LocalDesktopCapturerParameters final {
     memset(encoded_file_path_, 0, strlen(encoded_file_path_));
     const size_t len = strlen(save_path);
     // copy
-    strncpy_s(encoded_file_path_, len, save_path, len);
+    strncpy_s(encoded_file_path_, len + 1, save_path, len);
     encoded_file_path_[len] = '\0';
   }
   const char* EncodedFilePath() const { return encoded_file_path_; }
