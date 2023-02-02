@@ -85,13 +85,20 @@ void RTCCustomAudioSource::OnAudioData(uint8_t* data,
   }
 
   if (i != frames) {
-    pending_remainder = frames - static_cast<uint16_t>(i);
+    pending_remainder = frames - i;
     memcpy(pending, data + i * sample_size * num_channels,
            pending_remainder * sample_size * num_channels);
   }
 }
 
-RTCCustomAudioSource::RTCCustomAudioSource() : sink_(nullptr) {}
+RTCCustomAudioSource::RTCCustomAudioSource()
+    : sink_(nullptr), options_(cricket::AudioOptions()) {
+  options_.echo_cancellation.emplace(false);  // default: true
+  options_.auto_gain_control.emplace(false);  // default: true
+  options_.noise_suppression.emplace(false);  // default: true
+  options_.highpass_filter.emplace(false);    // default: true
+  options_.stereo_swapping.emplace(false);
+}
 
 RTCCustomAudioSource::~RTCCustomAudioSource() {
   free(pending);
@@ -100,7 +107,7 @@ RTCCustomAudioSource::~RTCCustomAudioSource() {
 
 void RTCCustomAudioSource::Initialize() {
   size_t num_channels = 2;
-  size_t pending_len = num_channels * 2 * 640;
+  size_t pending_len = num_channels * 2 * 960;
   pending = (uint8_t*)malloc(pending_len);
   pending_remainder = 0;
 }

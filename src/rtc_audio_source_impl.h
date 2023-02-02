@@ -35,6 +35,7 @@ class RTCCustomAudioSource
                    size_t frames,
                    uint32_t sample_rate,
                    size_t num_channels);
+  const cricket::AudioOptions options() const override { return options_; }
 
  protected:
   uint16_t pending_remainder;
@@ -44,6 +45,7 @@ class RTCCustomAudioSource
 
  private:
   webrtc::AudioTrackSinkInterface* sink_;
+  cricket::AudioOptions options_;
   rtc::TimestampAligner timestamp_aligner_;
 
   void Initialize();
