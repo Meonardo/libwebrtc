@@ -7,12 +7,27 @@
 
 #include "rtc_peerconnection_factory_impl.h"
 
+#include <fstream>
+
 namespace libwebrtc {
+
+class CustomnLogSink : public rtc::LogSink {
+ public:
+  CustomnLogSink(const std::string& filepath) { file_stream_.open(filepath); }
+
+  virtual void OnLogMessage(const std::string& message) override {
+    file_stream_ << message;
+  }
+
+ private:
+  std::ofstream file_stream_;
+};
 
 static bool g_is_initialized = false;
 std::unique_ptr<rtc::Thread> worker_thread;
 std::unique_ptr<rtc::Thread> signaling_thread;
 std::unique_ptr<rtc::Thread> network_thread;
+std::unique_ptr<CustomnLogSink> log_sink;
 
 bool LibWebRTC::Initialize() {
   if (!g_is_initialized) {
@@ -59,6 +74,10 @@ void LibWebRTC::Terminate() {
     network_thread.reset(nullptr);
   }
 
+  if (log_sink.get() == nullptr) {
+    log_sink.reset(nullptr);
+  }
+
   g_is_initialized = false;
 }
 
@@ -73,11 +92,25 @@ LibWebRTC::CreateRTCPeerConnectionFactory() {
   return rtc_peerconnection_factory;
 }
 
+void LibWebRTC::RedirectRTCLogToFile(int level, const char* filepath) {
+  std::string path(filepath);
+  if (path.empty()) {
+    return;
+  }
+
+  if (log_sink.get() == nullptr) {
+    log_sink = std::make_unique<CustomnLogSink>(path);
+  }
+
+  rtc::LogMessage::AddLogToStream(log_sink.get(), (rtc::LoggingSeverity)level);
+}
+
 // #include "rtc_base/logging.h"
 // The meanings of the levels are:
 //  LS_VERBOSE: This level is for data which we do not want to appear in the
 //   normal debug log, but should appear in diagnostic logs.
-//  LS_INFO: Chatty level used in debugging for all sorts of things, the default
+//  LS_INFO: Chatty level used in debugging for all sorts of things, the
+//  default
 //   in debug builds.
 //  LS_WARNING: Something that may warrant investigation.
 //  LS_ERROR: Something that should not have occurred.
@@ -102,7 +135,8 @@ void LibWebRTC::ExecuteFuncOnSignalingThread(void (*func)(void*), void* args) {
   signaling_thread->Invoke<void>(RTC_FROM_HERE, [&]() { func(args); });
 }
 
-void LibWebRTC::AsyncExecuteFuncOnWorkerThread(void (*func)(void*), void* args) {
+void LibWebRTC::AsyncExecuteFuncOnWorkerThread(void (*func)(void*),
+                                               void* args) {
   worker_thread->PostTask(RTC_FROM_HERE, [func, args]() { func(args); });
 }
 

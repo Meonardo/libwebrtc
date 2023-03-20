@@ -15,6 +15,9 @@ class LibWebRTC {
 
   LIB_WEBRTC_API static void Terminate();
 
+  LIB_WEBRTC_API static void RedirectRTCLogToFile(int level,
+                                                  const char* filepath);
+
   LIB_WEBRTC_API static void UpdateRTCLogLevel(int level);
 
   LIB_WEBRTC_API static void ExecuteFuncOnWorkerThread(void (*func)(void*),
@@ -26,8 +29,9 @@ class LibWebRTC {
   LIB_WEBRTC_API static void AsyncExecuteFuncOnWorkerThread(void (*func)(void*),
                                                             void* args);
 
-  LIB_WEBRTC_API static void AsyncExecuteFuncOnSignalingThread(void (*func)(void*),
-                                                            void* args);
+  LIB_WEBRTC_API static void AsyncExecuteFuncOnSignalingThread(
+      void (*func)(void*),
+      void* args);
 };
 
 }  // namespace libwebrtc
