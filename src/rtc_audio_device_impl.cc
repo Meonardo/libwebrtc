@@ -1,6 +1,6 @@
 #include "rtc_audio_device_impl.h"
-#include "rtc_base/logging.h"
 #include "modules/audio_device/win/core_audio_utility_win.h"
+#include "rtc_base/logging.h"
 
 namespace libwebrtc {
 
@@ -78,8 +78,8 @@ int32_t AudioDeviceImpl::SetRecordingDevice(uint16_t index) {
 int AudioDeviceImpl::RestartPlayoutDevice() {
   return worker_thread_->Invoke<int16_t>(RTC_FROM_HERE, [&] {
     RTC_DCHECK_RUN_ON(worker_thread_);
-    auto adm =
-        reinterpret_cast<webrtc::AudioDeviceModuleForTest*>(audio_device_module_.get());
+    auto adm = reinterpret_cast<webrtc::AudioDeviceModuleForTest*>(
+        audio_device_module_.get());
     if (adm != nullptr)
       return adm->RestartPlayoutInternally();
     return -1;
@@ -96,7 +96,7 @@ bool AudioDeviceImpl::RecordingIsInitialized() const {
 
 bool AudioDeviceImpl::RestartRecorder() const {
   return worker_thread_->Invoke<bool>(RTC_FROM_HERE, [&] {
-    RTC_DCHECK_RUN_ON(worker_thread_);    
+    RTC_DCHECK_RUN_ON(worker_thread_);
 
     if (!audio_device_module_->Recording()) {
       if (audio_device_module_->InitRecording() == 0) {
@@ -147,6 +147,30 @@ void AudioDeviceImpl::OnDevicesChanged(AudioDeviceSink::EventType e,
 int32_t AudioDeviceImpl::OnDeviceChange(OnDeviceChangeCallback listener) {
   listener_ = listener;
   return 0;
+}
+
+int32_t AudioDeviceImpl::MicrophoneVolumeIsAvailable(bool* available) {
+  return audio_device_module_->MicrophoneVolumeIsAvailable(available);
+}
+
+int32_t AudioDeviceImpl::SetMicrophoneVolume(uint32_t volume) {
+  return audio_device_module_->SetMicrophoneVolume(volume);
+}
+
+int32_t AudioDeviceImpl::MicrophoneVolume(uint32_t* volume) const {
+  return audio_device_module_->MicrophoneVolume(volume);
+}
+
+int32_t AudioDeviceImpl::SpeakerVolumeIsAvailable(bool* available) {
+  return audio_device_module_->SpeakerVolumeIsAvailable(available);
+}
+
+int32_t AudioDeviceImpl::SetSpeakerVolume(uint32_t volume) {
+  return audio_device_module_->SetSpeakerVolume(volume);
+}
+
+int32_t AudioDeviceImpl::SpeakerVolume(uint32_t* volume) const {
+  return audio_device_module_->SpeakerVolume(volume);
 }
 
 }  // namespace libwebrtc

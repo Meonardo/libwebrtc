@@ -6,6 +6,14 @@ scoped_refptr<RTCMediaConstraints> RTCMediaConstraints::Create() {
   scoped_refptr<RTCMediaConstraintsImpl> constraints =
       scoped_refptr<RTCMediaConstraintsImpl>(
           new RefCountedObject<RTCMediaConstraintsImpl>());
+
+  constraints->AddMandatoryConstraint(kGoogEchoCancellation, kValueTrue);
+  constraints->AddMandatoryConstraint(kNoiseSuppression, kValueTrue);
+  constraints->AddMandatoryConstraint(kAutoGainControl, kValueFalse);
+  constraints->AddOptionalConstraint(kGoogEchoCancellation, kValueTrue);
+  constraints->AddOptionalConstraint(kNoiseSuppression, kValueTrue);
+  constraints->AddOptionalConstraint(kAutoGainControl, kValueFalse);
+
   return constraints;
 }
 
@@ -58,12 +66,14 @@ const char* RTCMediaConstraints::kNumSimulcastLayers =
 
 void RTCMediaConstraintsImpl::AddMandatoryConstraint(const string key,
                                                      const string value) {
-  webrtc::MediaConstraints::Constraint constraint(to_std_string(key), to_std_string(value));
+  webrtc::MediaConstraints::Constraint constraint(to_std_string(key),
+                                                  to_std_string(value));
   mandatory_.push_back(constraint);
 }
 void RTCMediaConstraintsImpl::AddOptionalConstraint(const string key,
                                                     const string value) {
-  webrtc::MediaConstraints::Constraint constraint(to_std_string(key), to_std_string(value));
+  webrtc::MediaConstraints::Constraint constraint(to_std_string(key),
+                                                  to_std_string(value));
   optional_.push_back(constraint);
 }
 }  // namespace libwebrtc

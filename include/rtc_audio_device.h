@@ -52,6 +52,15 @@ class RTCAudioDevice : public RefCountInterface {
   virtual bool RestartRecorder() const = 0;
   virtual bool ToggleRecordingMute(bool mute) = 0;
 
+  // Microphone volume controls
+  virtual int32_t MicrophoneVolumeIsAvailable(bool* available) = 0;
+  virtual int32_t SetMicrophoneVolume(uint32_t volume) = 0;
+  virtual int32_t MicrophoneVolume(uint32_t* volume) const = 0;
+  // Speaker volume controls
+  virtual int32_t SpeakerVolumeIsAvailable(bool* available) = 0;
+  virtual int32_t SetSpeakerVolume(uint32_t volume) = 0;
+  virtual int32_t SpeakerVolume(uint32_t* volume) const = 0;
+
  protected:
   virtual ~RTCAudioDevice() {}
 };

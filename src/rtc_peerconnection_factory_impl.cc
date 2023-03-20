@@ -198,6 +198,10 @@ scoped_refptr<RTCVideoDevice> RTCPeerConnectionFactoryImpl::GetVideoDevice() {
 
 scoped_refptr<RTCAudioSource> RTCPeerConnectionFactoryImpl::CreateAudioSource(
     const string audio_source_label) {
+  auto audio_options = cricket::AudioOptions();
+  audio_options.auto_gain_control = false;
+  audio_options.noise_suppression = true;
+  audio_options.echo_cancellation = true;
   rtc::scoped_refptr<webrtc::AudioSourceInterface> rtc_source_track =
       rtc_peerconnection_factory_->CreateAudioSource(cricket::AudioOptions());
 
