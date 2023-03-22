@@ -3,14 +3,25 @@
 #include "api/scoped_refptr.h"
 #include "rtc_base/logging.h"
 #include "rtc_base/ssl_adapter.h"
+#include "rtc_base/string_utils.h"
 #include "rtc_base/thread.h"
 
 #include "rtc_peerconnection_factory_impl.h"
 
 #include <fstream>
 
-namespace libwebrtc {
+#define MAX_LOG_BUF_SIZE 5120
 
+namespace libwebrtc {
+class CustomnLogSink;
+// global values
+static bool g_is_initialized = false;
+std::unique_ptr<rtc::Thread> worker_thread;
+std::unique_ptr<rtc::Thread> signaling_thread;
+std::unique_ptr<rtc::Thread> network_thread;
+std::unique_ptr<CustomnLogSink> log_sink;
+
+// customized log sink
 class CustomnLogSink : public rtc::LogSink {
  public:
   CustomnLogSink(const std::string& filepath) { file_stream_.open(filepath); }
@@ -23,12 +34,7 @@ class CustomnLogSink : public rtc::LogSink {
   std::ofstream file_stream_;
 };
 
-static bool g_is_initialized = false;
-std::unique_ptr<rtc::Thread> worker_thread;
-std::unique_ptr<rtc::Thread> signaling_thread;
-std::unique_ptr<rtc::Thread> network_thread;
-std::unique_ptr<CustomnLogSink> log_sink;
-
+// LibWebRTC class methods define
 bool LibWebRTC::Initialize() {
   if (!g_is_initialized) {
     rtc::InitializeSSL();
@@ -74,7 +80,8 @@ void LibWebRTC::Terminate() {
     network_thread.reset(nullptr);
   }
 
-  if (log_sink.get() == nullptr) {
+  if (log_sink.get() != nullptr) {
+    rtc::LogMessage::RemoveLogToStream(log_sink.get());
     log_sink.reset(nullptr);
   }
 
@@ -105,24 +112,6 @@ void LibWebRTC::RedirectRTCLogToFile(int level, const char* filepath) {
   rtc::LogMessage::AddLogToStream(log_sink.get(), (rtc::LoggingSeverity)level);
 }
 
-// #include "rtc_base/logging.h"
-// The meanings of the levels are:
-//  LS_VERBOSE: This level is for data which we do not want to appear in the
-//   normal debug log, but should appear in diagnostic logs.
-//  LS_INFO: Chatty level used in debugging for all sorts of things, the
-//  default
-//   in debug builds.
-//  LS_WARNING: Something that may warrant investigation.
-//  LS_ERROR: Something that should not have occurred.
-//  LS_NONE: Don't log.
-// enum LoggingSeverity {
-//  LS_VERBOSE,
-//  LS_INFO,
-//  LS_WARNING,
-//  LS_ERROR,
-//  LS_NONE,
-//};
-
 void LibWebRTC::UpdateRTCLogLevel(int level) {
   rtc::LogMessage::LogToDebug((rtc::LoggingSeverity)level);
 }
@@ -143,6 +132,35 @@ void LibWebRTC::AsyncExecuteFuncOnWorkerThread(void (*func)(void*),
 void LibWebRTC::AsyncExecuteFuncOnSignalingThread(void (*func)(void*),
                                                   void* args) {
   signaling_thread->PostTask(RTC_FROM_HERE, [func, args]() { func(args); });
+}
+
+// custom log methods
+void LibWebRTC::RTCLogEx(RTCLogLevel severity,
+                         const char* file,
+                         int line,
+                         const char* format,
+                         ...) {
+  va_list args;
+
+  va_start(args, format);
+
+  char log_string[MAX_LOG_BUF_SIZE];
+  vsnprintf(log_string, sizeof(log_string), format, args);
+  RTC_LOG_N_LINE((rtc::LoggingSeverity)severity, file, line) << log_string;
+
+  va_end(args);
+}
+
+void LibWebRTC::RTCFileName(const char* file_path, char ret[128]) {
+  size_t found;
+  std::string path(file_path);
+  found = path.find_last_of("/\\");
+  if (found) {
+    auto filename = path.substr(found + 1);
+    strcpy(ret, filename.c_str());
+  } else {
+    strcpy(ret, file_path);
+  }
 }
 
 }  // namespace libwebrtc
