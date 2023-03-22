@@ -40,6 +40,14 @@ class AudioDeviceImpl : public RTCAudioDevice, public webrtc::AudioDeviceSink {
   bool RecordingIsInitialized() const override;
   bool RestartRecorder() const override;
   bool ToggleRecordingMute(bool mute) override;
+  // Microphone volume controls
+  virtual int32_t MicrophoneVolumeIsAvailable(bool* available) override;
+  virtual int32_t SetMicrophoneVolume(uint32_t volume) override;
+  virtual int32_t MicrophoneVolume(uint32_t* volume) const override;
+  // Speaker volume controls
+  virtual int32_t SpeakerVolumeIsAvailable(bool* available) override;
+  virtual int32_t SetSpeakerVolume(uint32_t volume) override;
+  virtual int32_t SpeakerVolume(uint32_t* volume) const override;
 
  protected:
   void OnDevicesUpdated() override;

@@ -146,4 +146,28 @@ int32_t AudioDeviceImpl::OnDeviceChange(OnDeviceChangeCallback listener) {
   return 0;
 }
 
+int32_t AudioDeviceImpl::MicrophoneVolumeIsAvailable(bool* available) {
+  return audio_device_module_->MicrophoneVolumeIsAvailable(available);
+}
+
+int32_t AudioDeviceImpl::SetMicrophoneVolume(uint32_t volume) {
+  return audio_device_module_->SetMicrophoneVolume(volume);
+}
+
+int32_t AudioDeviceImpl::MicrophoneVolume(uint32_t* volume) const {
+  return audio_device_module_->MicrophoneVolume(volume);
+}
+
+int32_t AudioDeviceImpl::SpeakerVolumeIsAvailable(bool* available) {
+  return audio_device_module_->SpeakerVolumeIsAvailable(available);
+}
+
+int32_t AudioDeviceImpl::SetSpeakerVolume(uint32_t volume) {
+  return audio_device_module_->SetSpeakerVolume(volume);
+}
+
+int32_t AudioDeviceImpl::SpeakerVolume(uint32_t* volume) const {
+  return audio_device_module_->SpeakerVolume(volume);
+}
+
 }  // namespace libwebrtc
