@@ -8,6 +8,11 @@ namespace libwebrtc {
 class RTCVideoCapturer : public RefCountInterface {
  public:
   virtual ~RTCVideoCapturer() {}
+
+  virtual bool UpdateCaptureDevice(size_t width,
+                                   size_t height,
+                                   size_t target_fps,
+                                   size_t capture_device_index) = 0;
 };
 
 class RTCVideoDevice : public RefCountInterface {

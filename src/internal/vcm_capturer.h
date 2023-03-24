@@ -15,8 +15,8 @@
 
 #include "api/scoped_refptr.h"
 #include "modules/video_capture/video_capture.h"
-#include "src/internal/video_capturer.h"
 #include "rtc_base/thread.h"
+#include "src/internal/video_capturer.h"
 
 namespace webrtc {
 namespace internal {
@@ -33,6 +33,12 @@ class VcmCapturer : public VideoCapturer,
 
   void OnFrame(const VideoFrame& frame) override;
 
+  // change the capturing device dynamically
+  bool UpdateCaptureDevice(size_t width,
+                           size_t height,
+                           size_t target_fps,
+                           size_t capture_device_index);
+
  private:
   VcmCapturer(rtc::Thread* worker_thread);
   bool Init(size_t width,
@@ -48,11 +54,14 @@ class VcmCapturer : public VideoCapturer,
 
 class CapturerTrackSource : public webrtc::VideoTrackSource {
  public:
-  static rtc::scoped_refptr<CapturerTrackSource> Create(rtc::Thread* worker_thread);
+  static rtc::scoped_refptr<CapturerTrackSource> Create(
+      rtc::Thread* worker_thread);
 
  public:
   explicit CapturerTrackSource(std::unique_ptr<VideoCapturer> capturer)
       : VideoTrackSource(/*remote=*/false), capturer_(std::move(capturer)) {}
+
+  VideoCapturer* CapturerSource() const { return capturer_.get(); }
 
  private:
   rtc::VideoSourceInterface<webrtc::VideoFrame>* source() override {
