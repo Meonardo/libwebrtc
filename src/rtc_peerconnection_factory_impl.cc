@@ -468,7 +468,26 @@ RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>*
 RTCPeerConnectionFactoryImpl::CreateVideoD3D11Renderer(
     HWND hwnd,
     VideoFrameSizeChangeObserver* observer) {
-  return new VideoD3D11Renderer(hwnd, observer);
+  if (rtc::Thread::Current() == worker_thread_) {
+    return new VideoD3D11Renderer(hwnd, observer);
+  }
+  return worker_thread_
+      ->Invoke<RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>*>(
+          RTC_FROM_HERE,
+          [hwnd, observer] { return new VideoD3D11Renderer(hwnd, observer); });
+}
+
+void RTCPeerConnectionFactoryImpl::DestroyVideoD3D11Renderer(
+    RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>* renderer) {
+  if (renderer == nullptr)
+    return;
+  if (rtc::Thread::Current() == worker_thread_) {
+    delete renderer;
+    renderer = nullptr;
+  } else {
+    worker_thread_->Invoke<void>(RTC_FROM_HERE,
+                                 [renderer] { delete renderer; });
+  }
 }
 
 }  // namespace libwebrtc

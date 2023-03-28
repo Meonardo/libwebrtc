@@ -10,6 +10,7 @@
 #include "src/win/msdkvideodecoder.h"
 
 #include <wrl.h>
+#include <thread>
 
 using namespace rtc;
 
@@ -59,6 +60,9 @@ MSDKVideoDecoder::MSDKVideoDecoder()
   m_dec_bs_offset_ = 0;
   inited_ = false;
   surface_handle_.reset(new D3D11ImageHandle());
+
+  RTC_LOG(LS_ERROR) << "MSDKVideoDecoder init " << this
+                    << " thread: " << std::this_thread::get_id();
 }
 
 MSDKVideoDecoder::~MSDKVideoDecoder() {
@@ -67,6 +71,18 @@ MSDKVideoDecoder::~MSDKVideoDecoder() {
   if (decoder_thread_.get() != nullptr) {
     decoder_thread_->Stop();
   }
+
+  if (d3d11_video_device_) {
+    d3d11_video_device_.Release();
+    d3d11_video_device_ = nullptr;
+  }
+  if (d3d11_device_context_) {
+    d3d11_device_context_.Release();
+    d3d11_device_context_ = nullptr;
+  }
+
+  RTC_LOG(LS_ERROR) << "MSDKVideoDecoder deinit " << this
+                    << " thread: " << std::this_thread::get_id();
 }
 
 void MSDKVideoDecoder::CheckOnCodecThread() {
@@ -76,7 +92,9 @@ void MSDKVideoDecoder::CheckOnCodecThread() {
 }
 
 bool MSDKVideoDecoder::CreateD3D11Device() {
+  RTC_LOG(LS_ERROR) << "CreateD3D11Device begin...";
   HRESULT hr = S_OK;
+  UINT creation_flags = 0;
 
   static D3D_FEATURE_LEVEL feature_levels[] = {
       D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1,
@@ -120,10 +138,14 @@ bool MSDKVideoDecoder::CreateD3D11Device() {
     return false;
   }
 
+#ifdef _DEBUG
+  creation_flags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+
   // On DG1 this setting driver type to hardware will result-in device
   // creation failure.
-  hr = D3D11CreateDevice(
-      m_padapter_, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, feature_levels,
+  hr = D3D11CreateDevice(m_padapter_, D3D_DRIVER_TYPE_UNKNOWN, nullptr,
+                         creation_flags, feature_levels,
       sizeof(feature_levels) / sizeof(feature_levels[0]), D3D11_SDK_VERSION,
       &d3d11_device_, &feature_levels_out, &d3d11_device_context_);
   if (FAILED(hr)) {
@@ -154,6 +176,7 @@ bool MSDKVideoDecoder::CreateD3D11Device() {
     }
   }
 
+  RTC_LOG(LS_ERROR) << "CreateD3D11Device finished";
   return true;
 }
 
@@ -249,7 +272,6 @@ int32_t MSDKVideoDecoder::InitDecodeOnCodecThread() {
     MSDK_ZERO_MEMORY(m_mfx_bs_);
     m_mfx_bs_.Data = new mfxU8[MSDK_BS_INIT_SIZE];
     m_mfx_bs_.MaxLength = MSDK_BS_INIT_SIZE;
-    RTC_LOG(LS_ERROR) << "Creating underlying MSDK decoder.";
     m_pmfx_dec_ = new MFXVideoDECODE(*m_mfx_session_);
     if (m_pmfx_dec_ == nullptr) {
       return WEBRTC_VIDEO_CODEC_ERROR;
@@ -260,7 +282,6 @@ int32_t MSDKVideoDecoder::InitDecodeOnCodecThread() {
   if (codec_id == MFX_CODEC_VP9 || codec_id == MFX_CODEC_AV1)
     m_pmfx_video_params_.mfx.EnableReallocRequest = MFX_CODINGOPTION_ON;
   inited_ = true;
-  RTC_LOG(LS_ERROR) << "InitDecodeOnCodecThread --";
   return WEBRTC_VIDEO_CODEC_OK;
 }
 

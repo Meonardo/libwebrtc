@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdio>
 #include <system_error>
+#include <thread>
 
 #include "api/video/i420_buffer.h"
 #include "common_video/libyuv/include/webrtc_libyuv.h"
@@ -40,6 +41,8 @@ WebrtcVideoRendererD3D11Impl::WebrtcVideoRendererD3D11Impl(
     : wnd_(wnd), frame_observer_(observer), clock_(Clock::GetRealTimeClock()) {
   CreateDXGIFactory(__uuidof(IDXGIFactory2), (void**)(&dxgi_factory_));
   sr_enabled_ = SupportSuperResolution();
+  RTC_LOG(LS_ERROR) << "WebrtcVideoRendererD3D11Impl init " << this
+                    << " thread: " << std::this_thread::get_id();
 }
 
 WebrtcVideoRendererD3D11Impl::~WebrtcVideoRendererD3D11Impl() {
@@ -127,7 +130,8 @@ WebrtcVideoRendererD3D11Impl::~WebrtcVideoRendererD3D11Impl() {
     d3d11_device_ = nullptr;
   }
 
-  printf("[WebrtcVideoRendererD3D11Impl] deinit.\n");
+  RTC_LOG(LS_ERROR) << "WebrtcVideoRendererD3D11Impl deinit " << this
+                    << " thread: " << std::this_thread::get_id();
 }
 
 // The swapchain needs to use window height/width of even number.
@@ -724,6 +728,13 @@ void WebrtcVideoRendererD3D11Impl::RenderD3D11Texture(int width, int height) {
   input_view_desc.Texture2D.MipSlice = 0;
   input_view_desc.Texture2D.ArraySlice = 0;
   Microsoft::WRL::ComPtr<ID3D11VideoProcessorInputView> input_view = nullptr;
+
+  /*RTC_LOG(LS_ERROR) << "CreateVideoProcessorInputView, this: " << this
+                    << " d3d11_video_device_: " << d3d11_video_device_
+                    << " video_processor_enum_: " << video_processor_enum_
+                    << " d3d11_texture_: " << d3d11_texture_
+                    << " thread: " << std::this_thread::get_id();*/
+
   hr = d3d11_video_device_->CreateVideoProcessorInputView(
       d3d11_texture_, video_processor_enum_, &input_view_desc, &input_view);
   if (FAILED(hr)) {
