@@ -84,6 +84,8 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
   virtual RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>*
   CreateVideoD3D11Renderer(HWND hwnd,
                            VideoFrameSizeChangeObserver* observer) override;
+  virtual void DestroyVideoD3D11Renderer(
+      RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>* renderer) override;
 
  protected:
   void CreateAudioDeviceModule_w();
