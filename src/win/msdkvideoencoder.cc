@@ -241,13 +241,16 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
   }
 #endif
 
-  m_mfx_enc_params_.mfx.TargetUsage = MFX_TARGETUSAGE_BALANCED;
-  m_mfx_enc_params_.mfx.RateControlMethod = MFX_RATECONTROL_CQP;
-  m_mfx_enc_params_.mfx.QPI = 31;
-  m_mfx_enc_params_.mfx.QPP = 31;
+  m_mfx_enc_params_.mfx.TargetUsage = MFX_TARGETUSAGE_BEST_QUALITY;
+  m_mfx_enc_params_.mfx.RateControlMethod = MFX_RATECONTROL_VBR;
+  m_mfx_enc_params_.mfx.TargetKbps = bitrate_ / 1000;
+  /*m_mfx_enc_params_.mfx.QPI = 31;
+  m_mfx_enc_params_.mfx.QPP = 31;*/
+  m_mfx_enc_params_.mfx.NumSlice = 1;
+  m_mfx_enc_params_.mfx.CodecProfile = 100;
 
-  // m_mfx_enc_params_.mfx.NumSlice = 0;
-  MSDKConvertFrameRate(30, &m_mfx_enc_params_.mfx.FrameInfo.FrameRateExtN,
+  MSDKConvertFrameRate(frame_rate,
+                       &m_mfx_enc_params_.mfx.FrameInfo.FrameRateExtN,
                        &m_mfx_enc_params_.mfx.FrameInfo.FrameRateExtD);
   m_mfx_enc_params_.mfx.EncodedOrder = 0;
   m_mfx_enc_params_.IOPattern = MFX_IOPATTERN_IN_SYSTEM_MEMORY;
@@ -280,7 +283,7 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
   m_mfx_enc_params_.mfx.FrameInfo.Width = MSDK_ALIGN16(codec_settings->width);
   m_mfx_enc_params_.mfx.LowPower = MFX_CODINGOPTION_ON;
 
-  m_mfx_enc_params_.AsyncDepth = 1;
+  m_mfx_enc_params_.AsyncDepth = 4;
   m_mfx_enc_params_.mfx.NumRefFrame = 2;
 
   mfxExtCodingOption extendedCodingOptions;

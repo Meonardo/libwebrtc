@@ -126,6 +126,7 @@ bool LocalDesktopCapturerImpl::StartCapturing(
     return StopCapturing(true);
   }
 
+  max_framerate_ = parameters->Fps();
   frame_callback_ = frame_callback;
   return capturer_->CaptureStarted();
 }
