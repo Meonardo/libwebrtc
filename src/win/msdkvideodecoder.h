@@ -86,7 +86,6 @@ class MSDKVideoDecoder : public webrtc::VideoDecoder {
   // Begin MSDK variables
   MFXVideoSession* m_mfx_session_;
   MFXVideoDECODE* m_pmfx_dec_;
-  // MFXVideoVPP* m_pmfx_vpp_;
 
   std::shared_ptr<D3D11FrameAllocator> m_pmfx_allocator_;
   mfxVideoParam m_pmfx_video_params_;
@@ -95,7 +94,6 @@ class MSDKVideoDecoder : public webrtc::VideoDecoder {
   mfxBitstream m_mfx_bs_;
   mfxFrameAllocResponse m_mfx_response_;
   mfxFrameSurface1* m_pinput_surfaces_;
-  // mfxFrameSurface1*       m_pinput_surfaces1_;
   mfxPluginUID m_plugin_id_;
   bool m_video_param_extracted;
   uint32_t m_dec_bs_offset_;
@@ -109,10 +107,6 @@ class MSDKVideoDecoder : public webrtc::VideoDecoder {
   CComPtr<IDXGIFactory2> m_pdxgi_factory_;
   // Store current decoded frame.
   std::unique_ptr<D3D11ImageHandle> surface_handle_;
-
-  // VideoProcessor objects
-  /*CComPtr<ID3D11VideoProcessor> video_processor_;
-  CComPtr<ID3D11VideoProcessorEnumerator> video_processor_enum_;*/
 
   bool inited_;
   int width_;

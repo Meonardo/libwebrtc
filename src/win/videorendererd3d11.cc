@@ -712,7 +712,7 @@ void WebrtcVideoRendererD3D11Impl::RenderD3D11Texture(int width, int height) {
   ZeroMemory(&output_view_desc, sizeof(output_view_desc));
   output_view_desc.ViewDimension = D3D11_VPOV_DIMENSION_TEXTURE2D;
   output_view_desc.Texture2D.MipSlice = 0;
-  Microsoft::WRL::ComPtr<ID3D11VideoProcessorOutputView> output_view = nullptr;
+  Microsoft::WRL::ComPtr<ID3D11VideoProcessorOutputView> output_view;
   hr = d3d11_video_device_->CreateVideoProcessorOutputView(
       dxgi_back_buffer.Get(), video_processor_enum_, &output_view_desc,
       &output_view);
@@ -727,13 +727,7 @@ void WebrtcVideoRendererD3D11Impl::RenderD3D11Texture(int width, int height) {
   input_view_desc.ViewDimension = D3D11_VPIV_DIMENSION_TEXTURE2D;
   input_view_desc.Texture2D.MipSlice = 0;
   input_view_desc.Texture2D.ArraySlice = 0;
-  Microsoft::WRL::ComPtr<ID3D11VideoProcessorInputView> input_view = nullptr;
-
-  /*RTC_LOG(LS_ERROR) << "CreateVideoProcessorInputView, this: " << this
-                    << " d3d11_video_device_: " << d3d11_video_device_
-                    << " video_processor_enum_: " << video_processor_enum_
-                    << " d3d11_texture_: " << d3d11_texture_
-                    << " thread: " << std::this_thread::get_id();*/
+  Microsoft::WRL::ComPtr<ID3D11VideoProcessorInputView> input_view;
 
   hr = d3d11_video_device_->CreateVideoProcessorInputView(
       d3d11_texture_, video_processor_enum_, &input_view_desc, &input_view);
