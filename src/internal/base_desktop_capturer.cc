@@ -35,11 +35,16 @@ class BasicScreenCapturer::BasicScreenCaptureThread
     : public rtc::Thread,
       public rtc::MessageHandler {
  public:
-  explicit BasicScreenCaptureThread(BasicScreenCapturer* capturer)
+  explicit BasicScreenCaptureThread(BasicScreenCapturer* capturer,
+                                    uint16_t delay_timeinterval)
       : rtc::Thread(rtc::CreateDefaultSocketServer()),
         capturer_(capturer),
-        finished_(false) {
-    waiting_time_ms_ = 1000 / 30;  // For basic capturer, fix it to 30fps
+        finished_(false),
+        waiting_time_ms_(0) {
+    if (delay_timeinterval > 0 && delay_timeinterval < 60) {
+      waiting_time_ms_ = 1000 / delay_timeinterval;
+    }
+    this->SetName("ScreenCaptureInvokeThread", nullptr);
   }
 
   virtual ~BasicScreenCaptureThread() { Stop(); }
@@ -59,8 +64,13 @@ class BasicScreenCapturer::BasicScreenCaptureThread
   virtual void OnMessage(rtc::Message* /*pmsg*/) {
     if (capturer_) {
       capturer_->CaptureFrame();
-      rtc::Thread::Current()->PostDelayed(RTC_FROM_HERE, waiting_time_ms_,
-                                          this);
+      // set capture time interval
+      if (waiting_time_ms_ > 0) {
+        rtc::Thread::Current()->PostDelayed(RTC_FROM_HERE, waiting_time_ms_,
+                                            this);
+      } else {
+        rtc::Thread::Current()->Post(RTC_FROM_HERE, this);
+      }
     } else {
       rtc::Thread::Current()->Quit();
     }
@@ -77,6 +87,7 @@ class BasicScreenCapturer::BasicScreenCaptureThread
   bool finished_;
   int waiting_time_ms_;
 };
+
 /////////////////////////////////////////////////////////////////////
 // Implementation of class BasicScreenCapturer.
 /////////////////////////////////////////////////////////////////////
@@ -114,6 +125,7 @@ int32_t BasicScreenCapturer::StartCapture(
     const webrtc::VideoCaptureCapability& capabilit) {
   s_width_ = capabilit.width;
   s_height_ = capabilit.height;
+  real_frame_captured_ = 0;
 
   if (capture_started_) {
     RTC_LOG(LS_ERROR) << "Basic Screen Capturerer is already running";
@@ -136,7 +148,8 @@ int32_t BasicScreenCapturer::StartCapture(
 
   screen_capturer_->Start(this);
 
-  screen_capture_thread_.reset(new BasicScreenCaptureThread(this));
+  screen_capture_thread_.reset(
+      new BasicScreenCaptureThread(this, capabilit.maxFPS));
   bool ret = screen_capture_thread_->Start();
   if (!ret) {
     RTC_LOG(LS_ERROR) << "Screen capture thread failed to start";
@@ -282,6 +295,10 @@ void BasicScreenCapturer::OnCaptureResult(
     captured_frame.set_ntp_time_ms(0);
     data_callback_->OnFrame(captured_frame);
   }
+
+  // real_frame_captured_ += 1;
+  // RTC_LOG(LS_ERROR) << "OnCaptureResult frame count: " <<
+  // real_frame_captured_;
 }
 
 bool BasicScreenCapturer::GetCurrentScreenList(libwebrtc::SourceList& list) {
@@ -406,12 +423,6 @@ bool BasicWindowCapturer::CaptureThreadProcess() {
 
 void BasicWindowCapturer::InitOnWorkerThread() {
   if (!capture_thread_) {
-    // capture_thread_.reset(new rtc::PlatformThread(WindowCaptureThreadFunc,
-    // this,
-    //                                               "WindowCaptureThread",
-    //                                               rtc::kHighPriority));
-    // capture_thread_->Start();
-
     rtc::ThreadAttributes attr;
     attr.SetPriority(rtc::ThreadPriority::kHigh);
 
@@ -435,10 +446,6 @@ int32_t BasicWindowCapturer::StartCapture(
   }
 
   capture_started_ = true;
-
-  /* worker_thread_->Invoke<void>(
-       RTC_FROM_HERE, rtc::Bind(&BasicWindowCapturer::InitOnWorkerThread,
-     this));*/
 
   worker_thread_->Invoke<void>(RTC_FROM_HERE, [this] { InitOnWorkerThread(); });
 

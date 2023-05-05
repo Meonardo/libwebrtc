@@ -28,14 +28,6 @@
 
 namespace owt {
 namespace base {
-
-class ScreenCaptureThread : public rtc::Thread {
- public:
-  ScreenCaptureThread() : rtc::Thread(rtc::CreateDefaultSocketServer()) {}
-  virtual void Run() override;
-  ~ScreenCaptureThread() override;
-};
-
 // Base class for screen/window capturer.
 class BasicDesktopCapturer : public webrtc::VideoCaptureModule,
                              public webrtc::DesktopCapturer::Callback {
@@ -137,6 +129,15 @@ class BasicScreenCapturer : public BasicDesktopCapturer {
   bool capture_started_ = false;
   libwebrtc::LocalDesktopCapturerDataSource* observer_;
   webrtc::Mutex lock_;
+
+  uint64_t real_frame_captured_ = 0;
+};
+
+class ScreenCaptureThread : public rtc::Thread {
+ public:
+  ScreenCaptureThread() : rtc::Thread(rtc::CreateDefaultSocketServer()) {}
+  virtual void Run() override;
+  ~ScreenCaptureThread() override;
 };
 
 // Capturer for capturing from specified window. Once the capturer is created,

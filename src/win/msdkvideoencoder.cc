@@ -249,7 +249,7 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
   m_mfx_enc_params_.mfx.NumSlice = 1;
   m_mfx_enc_params_.mfx.CodecProfile = 100;
 
-  MSDKConvertFrameRate(frame_rate,
+  MSDKConvertFrameRate(std::min(static_cast<int>(frame_rate), 30),
                        &m_mfx_enc_params_.mfx.FrameInfo.FrameRateExtN,
                        &m_mfx_enc_params_.mfx.FrameInfo.FrameRateExtD);
   m_mfx_enc_params_.mfx.EncodedOrder = 0;
