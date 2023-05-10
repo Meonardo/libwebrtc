@@ -46,6 +46,12 @@ class LocalDesktopCapturerParameters final {
     /// Capture from application
     kApplication
   };
+  enum class IntelQSVEncoderQuality {
+    kUnknown = 0,
+    kBestQuality = 1,
+    kBalanced = 4,
+    kBestSpeed = 7
+  };
 
   LocalDesktopCapturerParameters(bool cursor_enabled)
       : cursor_enabled_(cursor_enabled),
@@ -55,7 +61,8 @@ class LocalDesktopCapturerParameters final {
         width_(0),
         height_(0),
         max_bitrate_(6000),
-        min_bitrate_(3000) {
+        min_bitrate_(3000),
+        qsv_encoder_quality_(IntelQSVEncoderQuality::kBalanced) {
     const size_t file_path_len = 512;
     encoded_file_path_ = new char[file_path_len];
     memset(encoded_file_path_, 0, file_path_len);
@@ -121,6 +128,13 @@ class LocalDesktopCapturerParameters final {
   DesktopSourceType SourceType() const { return source_type_; }
   DesktopCapturePolicy CapturePolicy() const { return capture_policy_; }
 
+  void SetIntelEncoderQuality(IntelQSVEncoderQuality q) {
+    qsv_encoder_quality_ = q;
+  }
+  IntelQSVEncoderQuality IntelEncoderQuality() const {
+    return qsv_encoder_quality_;
+  }
+
  private:
   bool cursor_enabled_;
   DesktopSourceType source_type_;
@@ -134,6 +148,8 @@ class LocalDesktopCapturerParameters final {
   int min_bitrate_;
   // encoded video file saving path
   char* encoded_file_path_;
+  // `MSDKEncoder`
+  IntelQSVEncoderQuality qsv_encoder_quality_;
 };
 
 class RTCDesktopDevice : public RefCountInterface {

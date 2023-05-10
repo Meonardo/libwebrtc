@@ -51,6 +51,7 @@ class LocalDesktopCapturerImpl
   int max_bitrate_;
   int min_bitrate_;
   uint32_t max_framerate_;
+  LocalDesktopCapturerParameters::IntelQSVEncoderQuality qsv_encoder_quality_;
 
   bool InitEncoder(int width, int height);
   void ReleaseEncoder();

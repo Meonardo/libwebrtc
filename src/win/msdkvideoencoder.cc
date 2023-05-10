@@ -31,13 +31,15 @@ MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format)
     : MSDKVideoEncoder(format, "") {}
 
 MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format,
-                                   const std::string& write_to_filepath)
+                                   const std::string& write_to_filepath,
+                                   mfxU16 encode_q)
     : callback_(nullptr),
       bitrate_(0),
       width_(0),
       height_(0),
       encoder_thread_(rtc::Thread::Create()),
-      inited_(false) {
+      inited_(false),
+      encoding_quality_(encode_q) {
   m_penc_surfaces_ = nullptr;
   m_frames_processed_ = 0;
   encoder_thread_->SetName("MSDKVideoEncoderThread", nullptr);
@@ -241,9 +243,11 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
   }
 #endif
 
-  m_mfx_enc_params_.mfx.TargetUsage = MFX_TARGETUSAGE_BEST_QUALITY;
+  m_mfx_enc_params_.mfx.TargetUsage =
+      encoding_quality_;  // default is: MFX_TARGETUSAGE_BALANCED
   m_mfx_enc_params_.mfx.RateControlMethod = MFX_RATECONTROL_VBR;
-  m_mfx_enc_params_.mfx.TargetKbps = bitrate_ / 1000;
+  m_mfx_enc_params_.mfx.TargetKbps = codec_settings->maxBitrate;
+  m_mfx_enc_params_.mfx.MaxKbps = codec_settings->maxBitrate;
   /*m_mfx_enc_params_.mfx.QPI = 31;
   m_mfx_enc_params_.mfx.QPP = 31;*/
   m_mfx_enc_params_.mfx.NumSlice = 1;
@@ -806,8 +810,9 @@ std::unique_ptr<MSDKVideoEncoder> MSDKVideoEncoder::Create(
 
 std::unique_ptr<MSDKVideoEncoder> MSDKVideoEncoder::Create(
     cricket::VideoCodec format,
-    const std::string& save_to) {
-  return absl::make_unique<MSDKVideoEncoder>(format, save_to);
+    const std::string& save_to,
+    mfxU16 encode_quality) {
+  return absl::make_unique<MSDKVideoEncoder>(format, save_to, encode_quality);
 }
 
 }  // namespace base

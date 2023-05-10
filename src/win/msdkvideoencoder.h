@@ -37,12 +37,14 @@ class MSDKVideoEncoder : public webrtc::VideoEncoder {
  public:
   explicit MSDKVideoEncoder(const cricket::VideoCodec& codec);
   MSDKVideoEncoder(const cricket::VideoCodec& cocec,
-                   const std::string& write_to_filepath);
+                   const std::string& write_to_filepath,
+                   mfxU16 encode_quality = MFX_TARGETUSAGE_BALANCED);
   virtual ~MSDKVideoEncoder();
 
   static std::unique_ptr<MSDKVideoEncoder> Create(cricket::VideoCodec format);
   static std::unique_ptr<MSDKVideoEncoder> Create(cricket::VideoCodec format,
-                                                  const std::string& save_to);
+                                                  const std::string& save_to,
+                                                  mfxU16 encode_quality);
   int InitEncode(const webrtc::VideoCodec* codec_settings,
                  int number_of_cores,
                  size_t max_payload_size) override;
@@ -113,6 +115,7 @@ class MSDKVideoEncoder : public webrtc::VideoEncoder {
   std::unique_ptr<webrtc::IvfFileWriter> dump_writer_;
   bool enable_bitstream_dump_ = false;
   std::string encoder_dump_file_name_;
+  mfxU16 encoding_quality_;
 };
 }  // namespace base
 }  // namespace owt

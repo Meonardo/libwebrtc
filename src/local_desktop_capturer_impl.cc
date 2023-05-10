@@ -24,7 +24,9 @@ LocalDesktopCapturerImpl::LocalDesktopCapturerImpl(
       encoded_file_save_path_(""),
       max_bitrate_(6000),
       min_bitrate_(3000),
-      max_framerate_(30) {}
+      max_framerate_(30),
+      qsv_encoder_quality_(
+          LocalDesktopCapturerParameters::IntelQSVEncoderQuality::kBalanced) {}
 
 LocalDesktopCapturerImpl::~LocalDesktopCapturerImpl() {
   capturer_datasource_ = nullptr;
@@ -84,6 +86,10 @@ bool LocalDesktopCapturerImpl::StartCapturing(
     return StopCapturing(true);
   }
 
+  if (parameters->IntelEncoderQuality() !=
+      LocalDesktopCapturerParameters::IntelQSVEncoderQuality::kUnknown) {
+    qsv_encoder_quality_ = parameters->IntelEncoderQuality();
+  }
   number_cores_ = webrtc::CpuInfo::DetectNumberOfCores();
   next_frame_types_.push_back(webrtc::VideoFrameType::kVideoFrameDelta);
   image_callback_ = image_callback;
@@ -178,8 +184,8 @@ bool LocalDesktopCapturerImpl::InitEncoder(int width, int height) {
   // format.SetParam("profile-space", "0");
   // format.SetParam("level-id", "1");
 
-  encoder_ =
-      owt::base::MSDKVideoEncoder::Create(format, encoded_file_save_path_);
+  encoder_ = owt::base::MSDKVideoEncoder::Create(
+      format, encoded_file_save_path_, (mfxU16)qsv_encoder_quality_);
 
   webrtc::VideoCodec codec;
   codec.maxFramerate = max_framerate_;
