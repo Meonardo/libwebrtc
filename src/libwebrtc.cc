@@ -1,6 +1,7 @@
 #include "libwebrtc.h"
 
 #include "api/scoped_refptr.h"
+#include "rtc_base/helpers.h"
 #include "rtc_base/logging.h"
 #include "rtc_base/ssl_adapter.h"
 #include "rtc_base/string_utils.h"
@@ -158,6 +159,10 @@ void LibWebRTC::RTCFileName(const char* file_path, char ret[128]) {
   auto std_path = rtc::ToUtf8(path.filename());
 
   strcpy(ret, std_path.c_str());
+}
+
+string LibWebRTC::CreateRandomUuid() {
+  return rtc::CreateRandomUuid();
 }
 
 }  // namespace libwebrtc

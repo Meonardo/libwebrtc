@@ -17,20 +17,21 @@ class LibWebRTC {
 
   LIB_WEBRTC_API static void Terminate();
 
+  // Redirect the log stream to a file
   LIB_WEBRTC_API static void RedirectRTCLogToFile(int level,
                                                   const char* filepath);
 
+  // Change log severity level
   LIB_WEBRTC_API static void UpdateRTCLogLevel(int level);
 
+  // Run any function in the worker thread
   LIB_WEBRTC_API static void ExecuteFuncOnWorkerThread(void (*func)(void*),
                                                        void* args);
-
+  // Run any function in the signaling thread
   LIB_WEBRTC_API static void ExecuteFuncOnSignalingThread(void (*func)(void*),
                                                           void* args);
-
   LIB_WEBRTC_API static void AsyncExecuteFuncOnWorkerThread(void (*func)(void*),
                                                             void* args);
-
   LIB_WEBRTC_API static void AsyncExecuteFuncOnSignalingThread(
       void (*func)(void*),
       void* args);
@@ -45,6 +46,9 @@ class LibWebRTC {
 
   // Returns the filename with the path prefix removed.
   LIB_WEBRTC_API static void RTCFileName(const char* file_path, char ret[128]);
+
+  // Create random UUID
+  LIB_WEBRTC_API static string CreateRandomUuid();
 };
 
 }  // namespace libwebrtc
