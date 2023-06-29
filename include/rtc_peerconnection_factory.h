@@ -105,6 +105,8 @@ class RTCPeerConnectionFactory : public RefCountInterface {
 
   virtual void DestroyVideoD3D11Renderer(
       RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>* renderer) = 0;
+
+  virtual bool ForceUsingEncodedVideoEncoder() = 0;
 };
 
 }  // namespace libwebrtc

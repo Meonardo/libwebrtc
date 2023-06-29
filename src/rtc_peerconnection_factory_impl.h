@@ -94,6 +94,8 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
   virtual void DestroyVideoD3D11Renderer(
       RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>* renderer) override;
 
+  virtual bool ForceUsingEncodedVideoEncoder() override;
+
   rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface>
   peer_connection_factory() {
     return rtc_peerconnection_factory_;
@@ -118,6 +120,9 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
       const char* video_source_label,
       scoped_refptr<RTCMediaConstraints> constraints);
 #endif
+
+  webrtc::VideoEncoderFactory* GetVideoEncoderFactory() const;
+
  private:
   rtc::Thread* worker_thread_ = nullptr;
   rtc::Thread* signaling_thread_ = nullptr;

@@ -13,12 +13,14 @@
 #include "api/video_codecs/builtin_video_decoder_factory.h"
 #include "api/video_codecs/builtin_video_encoder_factory.h"
 #include "modules/audio_device/audio_device_impl.h"
+#include "pc/peer_connection_factory.h"
+#include "pc/peer_connection_factory_proxy.h"
 
 #include "modules/audio_device/include/audio_device_factory.h"
 
+#include "src/customizedvideoencoderfactory.h"
 #include "src/win/customizedframescapturer.h"
 #include "src/win/customizedvideosource.h"
-#include "src/win/encodedvideoencoderfactory.h"
 #include "src/win/mediacapabilities.h"
 #include "src/win/msdkvideodecoderfactory.h"
 #include "src/win/msdkvideoencoderfactory.h"
@@ -62,7 +64,24 @@ std::unique_ptr<webrtc::VideoEncoderFactory> CreateCustomVideoEncoderFactory() {
   if (!owt::base::MediaCapabilities::Get()) {
     return webrtc::CreateBuiltinVideoEncoderFactory();
   }
-  return std::make_unique<owt::base::EncodedVideoEncoderFactory>();
+  return std::make_unique<CustomizedEncodedVideoEncoderFactory>();
+}
+
+webrtc::VideoEncoderFactory*
+RTCPeerConnectionFactoryImpl::GetVideoEncoderFactory() const {
+  if (rtc_peerconnection_factory_ == nullptr)
+    return nullptr;
+  auto pcf_proxy = static_cast<webrtc::PeerConnectionFactoryProxy*>(
+      rtc_peerconnection_factory_.get());
+  if (pcf_proxy == nullptr)
+    return nullptr;
+
+  auto pcf = static_cast<webrtc::PeerConnectionFactory*>(pcf_proxy->internal());
+  if (pcf == nullptr)
+    return nullptr;
+
+  auto encoder_factory = pcf->media_engine()->video().encoder_factory();
+  return encoder_factory;
 }
 
 std::unique_ptr<webrtc::VideoEncoderFactory> CreateIntelVideoEncoderFactory() {
@@ -488,6 +507,25 @@ void RTCPeerConnectionFactoryImpl::DestroyVideoD3D11Renderer(
     worker_thread_->Invoke<void>(RTC_FROM_HERE,
                                  [renderer] { delete renderer; });
   }
+}
+
+bool RTCPeerConnectionFactoryImpl::ForceUsingEncodedVideoEncoder() {
+  if (!GlobalConfiguration::GetCustomizedVideoEncoderEnabled()) {
+    return false;
+  }
+  auto video_encoder_factory = GetVideoEncoderFactory();
+  if (video_encoder_factory == nullptr) {
+    return false;
+  }
+
+  auto customized_factory =
+      static_cast<CustomizedEncodedVideoEncoderFactory*>(video_encoder_factory);
+  if (customized_factory == nullptr) {
+    return false;
+  }
+  customized_factory->ForceUsingEncodedEncoder();
+
+  return true;
 }
 
 }  // namespace libwebrtc
