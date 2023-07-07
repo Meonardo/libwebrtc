@@ -128,7 +128,6 @@ CustomizedFramesCapturer::~CustomizedFramesCapturer() {
   // application. mark it to nullptr to avoid ReadFrame
   // passing native buffer to stack.
   if (encoder_ != nullptr) {
-    encoder_->SetBufferReceiver(nullptr);
     encoder_ = nullptr;
   }
 }

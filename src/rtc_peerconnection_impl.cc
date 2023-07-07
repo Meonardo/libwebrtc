@@ -812,6 +812,10 @@ scoped_refptr<RTCRtpTransceiver> RTCPeerConnectionImpl::AddTransceiver(
   return scoped_refptr<RTCRtpTransceiver>();
 }
 
+bool RTCPeerConnectionImpl::RemoveTransceiver(const string& mid) {
+  return rtc_peerconnection_->RemoveTransceiver(mid.std_string());
+}
+
 scoped_refptr<RTCRtpSender> RTCPeerConnectionImpl::AddTrack(
     scoped_refptr<RTCMediaTrack> track,
     vector<string> streamIds) {
