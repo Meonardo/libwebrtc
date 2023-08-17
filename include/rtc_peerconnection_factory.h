@@ -56,6 +56,7 @@ class RTCPeerConnectionFactory : public RefCountInterface {
   virtual scoped_refptr<RTCVideoDevice> GetVideoDevice() = 0;
 #ifdef RTC_DESKTOP_DEVICE
   virtual scoped_refptr<RTCDesktopDevice> GetDesktopDevice() = 0;
+  virtual scoped_refptr<RTCDesktopDevice> CreateDesktopDevice() = 0;
 #endif
   virtual scoped_refptr<RTCAudioSource> CreateAudioSource(
       const string audio_source_label) = 0;

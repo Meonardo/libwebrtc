@@ -68,6 +68,13 @@ class RTCVideoDeviceImpl : public RTCVideoDevice {
                         char* productUniqueIdUTF8 = 0,
                         uint32_t productUniqueIdUTF8Length = 0) override;
 
+  virtual uint32_t GetCaptureDeviceCapabilityCount(
+      const char* deviceUniqueIdUTF8) override;
+  virtual int32_t GetCaptureDeviceCapability(
+      const char* deviceUniqueIdUTF8,
+      uint32_t deviceCapabilityNumber,
+      VideoCaptureCapability& capability) override;
+
   scoped_refptr<RTCVideoCapturer> Create(const char* name,
                                          uint32_t index,
                                          size_t width,

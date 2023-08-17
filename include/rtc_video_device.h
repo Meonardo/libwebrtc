@@ -5,6 +5,29 @@
 
 namespace libwebrtc {
 
+enum class VideoType {
+  kUnknown,
+  kI420,
+  kIYUV,
+  kRGB24,
+  kARGB,
+  kRGB565,
+  kYUY2,
+  kYV12,
+  kUYVY,
+  kMJPEG,
+  kBGRA,
+  kNV12,
+};
+
+struct VideoCaptureCapability {
+  int32_t width = 0;
+  int32_t height = 0;
+  int32_t maxFPS = 0;
+  VideoType videoType = VideoType::kUnknown;
+  bool interlaced = false;
+};
+
 class RTCVideoCapturer : public RefCountInterface {
  public:
   virtual ~RTCVideoCapturer() {}
@@ -26,6 +49,13 @@ class RTCVideoDevice : public RefCountInterface {
                                 uint32_t deviceUniqueIdUTF8Length,
                                 char* productUniqueIdUTF8 = 0,
                                 uint32_t productUniqueIdUTF8Length = 0) = 0;
+
+  virtual uint32_t GetCaptureDeviceCapabilityCount(
+      const char* deviceUniqueIdUTF8) = 0;
+  virtual int32_t GetCaptureDeviceCapability(
+      const char* deviceUniqueIdUTF8,
+      uint32_t deviceCapabilityNumber,
+      VideoCaptureCapability& capability) = 0;
 
   virtual scoped_refptr<RTCVideoCapturer> Create(const char* name,
                                                  uint32_t index,

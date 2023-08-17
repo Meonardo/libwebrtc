@@ -261,6 +261,12 @@ RTCPeerConnectionFactoryImpl::GetDesktopDevice() {
   }
   return desktop_device_impl_;
 }
+
+scoped_refptr<RTCDesktopDevice>
+RTCPeerConnectionFactoryImpl::CreateDesktopDevice() {
+  return scoped_refptr<RTCDesktopDeviceImpl>(
+      new RefCountedObject<RTCDesktopDeviceImpl>(signaling_thread_));
+}
 #endif
 
 scoped_refptr<RTCVideoSource> RTCPeerConnectionFactoryImpl::CreateVideoSource(

@@ -56,6 +56,7 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
       scoped_refptr<RTCMediaConstraints> constraints) override;
 #ifdef RTC_DESKTOP_DEVICE
   virtual scoped_refptr<RTCDesktopDevice> GetDesktopDevice() override;
+  virtual scoped_refptr<RTCDesktopDevice> CreateDesktopDevice() override;
   virtual scoped_refptr<RTCVideoSource> CreateDesktopSource(
       scoped_refptr<RTCDesktopCapturer> capturer,
       const string video_source_label,
