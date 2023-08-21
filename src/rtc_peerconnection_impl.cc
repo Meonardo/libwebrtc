@@ -292,7 +292,7 @@ void RTCPeerConnectionImpl::OnConnectionChange(
     webrtc::PeerConnectionInterface::PeerConnectionState new_state) {
   webrtc::MutexLock cs(callback_crt_sec_.get());
   if (nullptr != observer_) {
-    RTC_LOG(LS_ERROR) << __FUNCTION__ << " " << new_state;
+    RTC_LOG(LS_INFO) << __FUNCTION__ << " " << new_state;
     observer_->OnPeerConnectionState(peer_connection_state_map[new_state]);
   }
 }

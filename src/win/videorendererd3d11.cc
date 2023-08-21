@@ -41,8 +41,8 @@ WebrtcVideoRendererD3D11Impl::WebrtcVideoRendererD3D11Impl(
     : wnd_(wnd), frame_observer_(observer), clock_(Clock::GetRealTimeClock()) {
   CreateDXGIFactory(__uuidof(IDXGIFactory2), (void**)(&dxgi_factory_));
   sr_enabled_ = SupportSuperResolution();
-  RTC_LOG(LS_ERROR) << "WebrtcVideoRendererD3D11Impl init " << this
-                    << " thread: " << std::this_thread::get_id();
+  RTC_LOG(LS_APP) << "WebrtcVideoRendererD3D11Impl init " << this
+                  << " thread: " << std::this_thread::get_id();
 }
 
 WebrtcVideoRendererD3D11Impl::~WebrtcVideoRendererD3D11Impl() {
@@ -130,8 +130,8 @@ WebrtcVideoRendererD3D11Impl::~WebrtcVideoRendererD3D11Impl() {
     d3d11_device_ = nullptr;
   }
 
-  RTC_LOG(LS_ERROR) << "WebrtcVideoRendererD3D11Impl deinit " << this
-                    << " thread: " << std::this_thread::get_id();
+  RTC_LOG(LS_APP) << "WebrtcVideoRendererD3D11Impl deinit " << this
+                  << " thread: " << std::this_thread::get_id();
 }
 
 // The swapchain needs to use window height/width of even number.

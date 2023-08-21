@@ -8,7 +8,7 @@ namespace libwebrtc {
 
 class LibWebRTC {
  public:
-  enum RTCLogLevel { kVebose = 0, kInfo, kWarning, kError, kNone };
+  enum RTCLogLevel { kVebose = 0, kInfo, kWarning, kError, kNone, kApp };
 
   LIB_WEBRTC_API static bool Initialize();
 
@@ -73,6 +73,9 @@ class LibWebRTC {
 
 #define RTCLogError(format, ...) \
   RTCLogFormat(libwebrtc::LibWebRTC::kError, format, ##__VA_ARGS__)
+
+#define RTCLogApp(format, ...) \
+  RTCLogFormat(libwebrtc::LibWebRTC::kApp, format, ##__VA_ARGS__)
 
 #if !defined(NDEBUG)
 #define RTCLogDebug(format, ...) RTCLogInfo(format, ##__VA_ARGS__)

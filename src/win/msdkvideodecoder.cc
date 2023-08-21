@@ -70,7 +70,7 @@ MSDKVideoDecoder::MSDKVideoDecoder()
   m_dec_bs_offset_ = 0;
   inited_ = false;
 
-  RTC_LOG(LS_ERROR) << "MSDKVideoDecoder init " << this
+  RTC_LOG(LS_APP) << "MSDKVideoDecoder init " << this
                     << " thread: " << std::this_thread::get_id();
 }
 
@@ -85,8 +85,8 @@ MSDKVideoDecoder::~MSDKVideoDecoder() {
 
   surface_handle_.reset();
 
-  RTC_LOG(LS_ERROR) << "MSDKVideoDecoder deinit " << this
-                    << " thread: " << std::this_thread::get_id();
+  RTC_LOG(LS_APP) << "MSDKVideoDecoder deinit " << this
+                  << " thread: " << std::this_thread::get_id();
 }
 
 void MSDKVideoDecoder::CheckOnCodecThread() {
@@ -96,7 +96,7 @@ void MSDKVideoDecoder::CheckOnCodecThread() {
 }
 
 bool MSDKVideoDecoder::CreateD3D11Device() {
-  RTC_LOG(LS_ERROR) << "CreateD3D11Device begin...";
+  RTC_LOG(LS_APP) << "CreateD3D11Device begin...";
   HRESULT hr = S_OK;
   UINT creation_flags = 0;
 
@@ -181,7 +181,7 @@ bool MSDKVideoDecoder::CreateD3D11Device() {
     }
   }
 
-  RTC_LOG(LS_ERROR) << "CreateD3D11Device finished";
+  RTC_LOG(LS_APP) << "CreateD3D11Device finished";
   return true;
 }
 
@@ -306,7 +306,7 @@ int32_t MSDKVideoDecoder::Decode(const webrtc::EncodedImage& inputImage,
 
 dec_header:
   if (inited_ && !m_video_param_extracted) {
-    RTC_LOG(LS_ERROR) << "decode header begin: " << this;
+    RTC_LOG(LS_APP) << "decode header begin: " << this;
 
     if (m_pmfx_dec_ == nullptr) {
       RTC_LOG(LS_ERROR) << "MSDK decoder not created.";
@@ -381,9 +381,9 @@ dec_header:
       }
 
       m_video_param_extracted = true;
-      RTC_LOG(LS_ERROR) << "decode header end: " << this;
+      RTC_LOG(LS_APP) << "decode header end: " << this;
     } else {
-      RTC_LOG(LS_ERROR) << "decode header failed, last sts: " << sts;
+      RTC_LOG(LS_APP) << "decode header failed, last sts: " << sts;
       // With current bitstream, if we're not able to extract the video param
       // and thus not able to continue decoding. return directly.
       return WEBRTC_VIDEO_CODEC_ERROR;
