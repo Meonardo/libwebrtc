@@ -35,8 +35,10 @@ bool LocalDesktopCapturer::Init(
     return false;
 
   vcm_->RegisterCaptureDataCallback(this);
-  capability_.maxFPS = parameters->Fps();
   capability_.videoType = webrtc::VideoType::kI420;
+  capability_.height = parameters->Height();
+  capability_.width = parameters->Width();
+  capability_.maxFPS = parameters->Fps();
 
   if (vcm_->StartCapture(capability_) != 0) {
     Destroy();

@@ -723,7 +723,7 @@ webrtc::VideoEncoder::EncoderInfo MSDKVideoEncoder::GetEncoderInfo() const {
   // to enable simulcast(for AVC/AV1).
   info.supports_simulcast = false;
   webrtc::VideoEncoder::ResolutionBitrateLimits rate_limit(
-      1280 * 720, 30 * 1024, 30 * 1024, 60 * 1024 * 1024);
+      1920 * 1080, 30 * 1024, 30 * 1024, 60 * 1024 * 1024);
 
   info.resolution_bitrate_limits.push_back(rate_limit);
 
