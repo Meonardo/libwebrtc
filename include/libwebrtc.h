@@ -20,6 +20,7 @@ class LibWebRTC {
   // Redirect the log stream to a file
   LIB_WEBRTC_API static void RedirectRTCLogToFile(int level,
                                                   const char* filepath);
+  LIB_WEBRTC_API static void FlushLogToFile();
 
   // Change log severity level
   LIB_WEBRTC_API static void UpdateRTCLogLevel(int level);

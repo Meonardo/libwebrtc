@@ -32,6 +32,21 @@ class CustomnLogSink : public rtc::LogSink {
     file_stream_ << message;
   }
 
+  void Close() { 
+    if (!file_stream_.is_open())
+      return;
+
+    file_stream_.flush(); 
+    file_stream_.close(); 
+  }
+
+  void Flush() {
+    if (!file_stream_.is_open())
+      return;
+
+    file_stream_.flush();
+  }
+
  private:
   std::ofstream file_stream_;
 };
@@ -83,6 +98,8 @@ void LibWebRTC::Terminate() {
   }
 
   if (log_sink.get() != nullptr) {
+    // flush immediately
+    log_sink->Close(); 
     rtc::LogMessage::RemoveLogToStream(log_sink.get());
     log_sink.reset(nullptr);
   }
@@ -112,6 +129,13 @@ void LibWebRTC::RedirectRTCLogToFile(int level, const char* filepath) {
   }
 
   rtc::LogMessage::AddLogToStream(log_sink.get(), (rtc::LoggingSeverity)level);
+}
+
+void LibWebRTC::FlushLogToFile() {
+  if (log_sink.get() == nullptr) {
+    return;
+  }
+  log_sink->Flush();
 }
 
 // log level see enum: `RTCLogLevel`
