@@ -54,7 +54,7 @@ MediaCapabilities::SupportedCapabilitiesForVideoEncoder(
   // Check platform type.
   if (inited_) {
     unsigned short platform_code = mfx_platform_.CodeName;
-    if (platform_code >= MFX_PLATFORM_HASWELL) {
+    if (platform_code > MFX_PLATFORM_HASWELL) {
       support_h264 = true;
       if (platform_code > MFX_PLATFORM_BROADWELL)
         h264_lp = true;
@@ -290,8 +290,7 @@ MediaCapabilities::SupportedCapabilitiesForVideoDecoder(
         memset(&video_param, 0, sizeof(video_param));
         video_param.mfx.CodecId = MFX_CODEC_HEVC;
         sts = mfx_decoder_->Query(nullptr, &video_param);
-        RTC_LOG(LS_ERROR) << "Johny---H265 query result:" << sts;
-
+      
         if (sts == MFX_ERR_NONE) {
           VideoDecoderCapability h265_cap;
           h265_cap.codec_type = owt::base::VideoCodec::kH265;

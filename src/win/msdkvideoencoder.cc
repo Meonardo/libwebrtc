@@ -99,10 +99,7 @@ int MSDKVideoEncoder::InitEncode(const webrtc::VideoCodec* codec_settings,
   bitrate_ = codec_settings->maxBitrate * 1000;
   frame_rate = codec_settings->maxFramerate;
   codec_type_ = codec_settings->codecType;
-  // return encoder_thread_->Invoke<int>(
-  //     RTC_FROM_HERE,
-  //     rtc::Bind(&MSDKVideoEncoder::InitEncodeOnEncoderThread, this,
-  //               codec_settings, number_of_cores, max_payload_size));
+  
   return encoder_thread_->Invoke<int>(
       RTC_FROM_HERE, [this, codec_settings, number_of_cores, max_payload_size] {
         return InitEncodeOnEncoderThread(codec_settings, number_of_cores,
@@ -189,13 +186,13 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
     m_pmfx_allocator_.reset();
     // Settings change, we need to reconfigure the allocator.
     // Alternatively we totally reinitialize the encoder here.
-  } else {
   }
   MSDKFactory* factory = MSDKFactory::Get();
   // We're not using d3d11.
   // somehow it will return nullptr if not use d3d11 to create session.
   m_mfx_session_ = factory->CreateSession();
   if (!m_mfx_session_) {
+    RTC_LOG(LS_ERROR) << "CreateSession failed.";
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
   // We only enable HEVC on ICL+, so not loading any GACC/SW HEVC plugin
@@ -203,16 +200,19 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
 
   m_pmfx_allocator_ = MSDKFactory::CreateFrameAllocator();
   if (nullptr == m_pmfx_allocator_) {
+    RTC_LOG(LS_ERROR) << "CreateFrameAllocator failed.";
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
   // Set allocator to the session.
   sts = m_mfx_session_->SetFrameAllocator(m_pmfx_allocator_.get());
   if (MFX_ERR_NONE != sts) {
+    RTC_LOG(LS_ERROR) << "Set allocator to the session failed.";
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
   // Create the encoder
   m_pmfx_enc_.reset(new MFXVideoENCODE(*m_mfx_session_));
   if (m_pmfx_enc_ == nullptr) {
+    RTC_LOG(LS_ERROR) << "Create the encoder failed.";
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
 
@@ -285,7 +285,7 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
   m_mfx_enc_params_.mfx.FrameInfo.Width = MSDK_ALIGN16(codec_settings->width);
   m_mfx_enc_params_.mfx.LowPower = MFX_CODINGOPTION_ON;
 
-  m_mfx_enc_params_.AsyncDepth = 4;
+  m_mfx_enc_params_.AsyncDepth = 1;
   m_mfx_enc_params_.mfx.NumRefFrame = 2;
 
   mfxExtCodingOption extendedCodingOptions;
@@ -377,11 +377,38 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
   } else if (MFX_WRN_INCOMPATIBLE_VIDEO_PARAM == sts) {
     RTC_LOG(LS_ERROR) << "Invalid video param detected.";
   } else if (MFX_ERR_NONE != sts) {
+    RTC_LOG(LS_ERROR) << "Init encoder failed: " << sts;
+    m_pmfx_enc_->GetVideoParam(&m_mfx_enc_params_);
+    RTC_LOG(LS_APP)
+        << "Current encoder params, mfx.CodecId: "
+        << m_mfx_enc_params_.mfx.CodecId
+        << ", mfx.CodecProfile: " << m_mfx_enc_params_.mfx.CodecProfile
+        << ", mfx.CodecLevel: " << m_mfx_enc_params_.mfx.CodecLevel
+        << ", mfx.LowPower: " << m_mfx_enc_params_.mfx.LowPower
+        << ", mfx.RateControlMethod: "
+        << m_mfx_enc_params_.mfx.RateControlMethod
+        << ", mfx.FrameInfo.ChromaFormat: "
+        << m_mfx_enc_params_.mfx.FrameInfo.ChromaFormat
+        << ", mfx.FrameInfo.FourCC: " << m_mfx_enc_params_.mfx.FrameInfo.FourCC
+        << ", mfx.FrameInfo.Width: " << m_mfx_enc_params_.mfx.FrameInfo.Width
+        << ", mfx.FrameInfo.Height: " << m_mfx_enc_params_.mfx.FrameInfo.Height
+        << ", mfx.FrameInfo.CropW: " << m_mfx_enc_params_.mfx.FrameInfo.CropW
+        << ", mfx.FrameInfo.CropH: " << m_mfx_enc_params_.mfx.FrameInfo.CropH
+        << ", mfx.FrameInfo.FrameRateExtN: "
+        << m_mfx_enc_params_.mfx.FrameInfo.FrameRateExtN
+        << ", mfx.FrameInfo.FrameRateExtD: "
+        << m_mfx_enc_params_.mfx.FrameInfo.FrameRateExtD
+        << ", mfx.FrameInfo.PicStruct: "
+        << m_mfx_enc_params_.mfx.FrameInfo.PicStruct
+        << ". m_mfx_enc_params.AsyncDepth: " << m_mfx_enc_params_.AsyncDepth
+        << ", m_mfx_enc_params.mfx.NumRefFrame: "
+        << m_mfx_enc_params_.mfx.NumRefFrame;
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
 
   sts = m_pmfx_enc_->QueryIOSurf(&m_mfx_enc_params_, &EncRequest);
   if (MFX_ERR_NONE != sts) {
+    RTC_LOG(LS_ERROR) << "QueryIOSurf failed: " << sts;
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
   nEncSurfNum = EncRequest.NumFrameSuggested;
@@ -389,12 +416,14 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
   sts = m_pmfx_allocator_->Alloc(m_pmfx_allocator_->pthis, &EncRequest,
                                  &m_enc_response_);
   if (MFX_ERR_NONE != sts) {
+    RTC_LOG(LS_ERROR) << "m_pmfx_allocator_ failed: " << sts;
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
 
   // Prepare mfxFrameSurface1 array for encoder
   m_penc_surfaces_ = new mfxFrameSurface1[m_enc_response_.NumFrameActual];
   if (m_penc_surfaces_ == nullptr) {
+    RTC_LOG(LS_ERROR) << "Prepare mfxFrameSurface1 failed: " << sts;
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
   for (int i = 0; i < m_enc_response_.NumFrameActual; i++) {
@@ -406,6 +435,7 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
                                   m_enc_response_.mids[i],
                                   &(m_penc_surfaces_[i].Data));
     if (MFX_ERR_NONE != sts) {
+      RTC_LOG(LS_ERROR) << "m_pmfx_allocator_->Lock failed: " << sts;
       return WEBRTC_VIDEO_CODEC_ERROR;
     }
   }

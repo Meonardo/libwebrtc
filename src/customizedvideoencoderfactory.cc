@@ -5,6 +5,7 @@
 #include "modules/video_coding/codecs/h264/include/h264.h"
 #include "modules/video_coding/codecs/vp8/include/vp8.h"
 #include "modules/video_coding/codecs/vp9/include/vp9.h"
+#include "rtc_base/logging.h"
 #include "src/win/codecutils.h"
 #include "src/win/customizedvideoencoderproxy.h"
 #include "src/win/msdkvideoencoder.h"
@@ -23,12 +24,18 @@ CustomizedEncodedVideoEncoderFactory::CustomizedEncodedVideoEncoderFactory()
   codecs_to_check.push_back(owt::base::VideoCodec::kVp8);
   std::vector<owt::base::VideoEncoderCapability> capabilities =
       media_capability->SupportedCapabilitiesForVideoEncoder(codecs_to_check);
-  // TODO(jianlin): use the check result from MSDK.
-  supported_codec_types_.push_back(webrtc::kVideoCodecH264);
-  supported_codec_types_.push_back(webrtc::kVideoCodecVP9);
-  supported_codec_types_.push_back(webrtc::kVideoCodecVP8);
-  supported_codec_types_.push_back(webrtc::kVideoCodecH265);
-  supported_codec_types_.push_back(webrtc::kVideoCodecAV1);
+  for (const auto& capability : capabilities) {
+    if (capability.codec_type == owt::base::VideoCodec::kH264)
+      supported_codec_types_.push_back(webrtc::kVideoCodecH264);
+    else if (capability.codec_type == owt::base::VideoCodec::kVp9)
+      supported_codec_types_.push_back(webrtc::kVideoCodecVP9);
+    else if (capability.codec_type == owt::base::VideoCodec::kH265)
+      supported_codec_types_.push_back(webrtc::kVideoCodecH265);
+    else if (capability.codec_type == owt::base::VideoCodec::kAv1)
+      supported_codec_types_.push_back(webrtc::kVideoCodecAV1);
+    else if (capability.codec_type == owt::base::VideoCodec::kVp8)
+      supported_codec_types_.push_back(webrtc::kVideoCodecVP8);
+  }
 }
 
 std::unique_ptr<webrtc::VideoEncoder>
@@ -38,16 +45,42 @@ CustomizedEncodedVideoEncoderFactory::CreateVideoEncoder(
     is_encoded_source_ = false;
     return owt::base::CustomizedVideoEncoderProxy::Create();
   } else {
+    bool vp9_hw = false, vp8_hw = false, av1_hw = false, h264_hw = false;
+    bool h265_hw = false;
+    for (auto& codec : supported_codec_types_) {
+      if (codec == webrtc::kVideoCodecAV1)
+        av1_hw = true;
+      else if (codec == webrtc::kVideoCodecH264)
+        h264_hw = true;
+      else if (codec == webrtc::kVideoCodecVP8)
+        vp8_hw = true;
+      else if (codec == webrtc::kVideoCodecVP9)
+        vp9_hw = true;
+      else if (codec == webrtc::kVideoCodecH265)
+        h265_hw = true;
+    }
     // VP8 encoding will always use SW impl.
-    if (absl::EqualsIgnoreCase(format.name, cricket::kVp8CodecName))
+    if (absl::EqualsIgnoreCase(format.name, cricket::kVp8CodecName) && !vp8_hw)
       return webrtc::VP8Encoder::Create();
     // VP9 encoding will only be enabled on ICL+;
-    else if (absl::EqualsIgnoreCase(format.name, cricket::kVp9CodecName))
+    else if (absl::EqualsIgnoreCase(format.name, cricket::kVp9CodecName) &&
+             !vp9_hw)
       return webrtc::VP9Encoder::Create(cricket::VideoCodec(format));
     // TODO: Replace with AV1 HW encoder post ADL.
-    else if (absl::EqualsIgnoreCase(format.name, cricket::kAv1CodecName))
+    else if (absl::EqualsIgnoreCase(format.name, cricket::kAv1CodecName) &&
+             !av1_hw)
       return webrtc::CreateLibaomAv1Encoder();
+    else if (absl::EqualsIgnoreCase(format.name, cricket::kH265CodecName) &&
+             !h265_hw) {
+    } else if (absl::EqualsIgnoreCase(format.name, cricket::kH264CodecName) &&
+               !h264_hw) {
+      RTC_LOG(LS_APP)
+          << "----- "
+          << "not support hardware H264 encoder, fallback to software encoder";
+      return webrtc::H264Encoder::Create(cricket::VideoCodec(format));
+    }
 
+    RTC_LOG(LS_APP) << "----- use hardware encoder";
     return owt::base::MSDKVideoEncoder::Create(cricket::VideoCodec(format));
   }
 }
