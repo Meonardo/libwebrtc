@@ -245,11 +245,9 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
 
   m_mfx_enc_params_.mfx.TargetUsage =
       encoding_quality_;  // default is: MFX_TARGETUSAGE_BALANCED
-  m_mfx_enc_params_.mfx.RateControlMethod = MFX_RATECONTROL_CQP;
-  //m_mfx_enc_params_.mfx.TargetKbps = codec_settings->maxBitrate;
-  m_mfx_enc_params_.mfx.MaxKbps = codec_settings->maxBitrate;
-  m_mfx_enc_params_.mfx.QPI = 31;
-  m_mfx_enc_params_.mfx.QPP = 31;
+  m_mfx_enc_params_.mfx.RateControlMethod = MFX_RATECONTROL_VBR;
+  m_mfx_enc_params_.mfx.TargetKbps = codec_settings->maxBitrate;  // in-kbps
+  m_mfx_enc_params_.mfx.MaxKbps = codec_settings->maxBitrate;     // in-kbps
 
   MSDKConvertFrameRate(std::min(static_cast<int>(frame_rate), 30),
                        &m_mfx_enc_params_.mfx.FrameInfo.FrameRateExtN,
