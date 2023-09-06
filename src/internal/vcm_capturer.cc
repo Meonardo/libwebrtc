@@ -129,7 +129,7 @@ bool VcmCapturer::StartCapture() {
 }
 
 bool VcmCapturer::CaptureStarted() {
-  if (vcm_ != nullptr) {
+  if (vcm_ == nullptr) {
     RTC_LOG(LS_ERROR) << "vcm_ is nullptr";
     return false;
   }
