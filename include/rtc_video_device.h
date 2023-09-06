@@ -32,6 +32,12 @@ class RTCVideoCapturer : public RefCountInterface {
  public:
   virtual ~RTCVideoCapturer() {}
 
+  virtual bool StartCapture() = 0;
+
+  virtual bool CaptureStarted() = 0;
+
+  virtual void StopCapture() = 0;
+  
   virtual bool UpdateCaptureDevice(size_t width,
                                    size_t height,
                                    size_t target_fps,

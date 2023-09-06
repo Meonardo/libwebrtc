@@ -33,6 +33,12 @@ class VcmCapturer : public VideoCapturer,
 
   void OnFrame(const VideoFrame& frame) override;
 
+  bool StartCapture() override;
+
+  bool CaptureStarted() override;
+
+  void StopCapture() override;
+
   // change the capturing device dynamically
   bool UpdateCaptureDevice(size_t width,
                            size_t height,

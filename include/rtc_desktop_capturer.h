@@ -12,6 +12,12 @@ class DesktopCapturerObserver;
 class RTCDesktopCapturer2 : public RefCountInterface {
  public:
   virtual ~RTCDesktopCapturer2() {}
+
+  virtual bool StartCapture() = 0;
+
+  virtual bool CaptureStarted() = 0;
+
+  virtual void StopCapture() = 0;
 };
 
 class RTCDesktopCapturer : public RefCountInterface {

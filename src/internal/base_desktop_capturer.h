@@ -129,6 +129,7 @@ class BasicScreenCapturer : public BasicDesktopCapturer {
   bool capture_started_ = false;
   libwebrtc::LocalDesktopCapturerDataSource* observer_;
   webrtc::Mutex lock_;
+  bool capture_restarted_ = false;
 
   uint64_t real_frame_captured_ = 0;
 };

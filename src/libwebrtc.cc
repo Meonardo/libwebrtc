@@ -12,7 +12,7 @@
 #include <filesystem>
 #include <fstream>
 
-#define MAX_LOG_BUF_SIZE 5120
+#define MAX_LOG_BUF_SIZE 9000
 
 namespace libwebrtc {
 class CustomnLogSink;

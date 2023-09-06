@@ -26,7 +26,11 @@
 
 #include "include/base/refcount.h"
 #include "rtc_types.h"
-#include "src/rtc_desktop_capturer_impl.h"
+#include "include/rtc_desktop_capturer.h"
+
+namespace {
+class RTCDesktopCapturerImpl;
+}
 
 namespace webrtc {
 namespace internal {
@@ -44,6 +48,12 @@ class LocalDesktopCapturer
 
   // VideoSinkInterfaceImpl
   void OnFrame(const webrtc::VideoFrame& frame) override;
+
+  bool StartCapture() override;
+
+  bool CaptureStarted() override;
+
+  void StopCapture() override;
 
   bool Init(
       std::shared_ptr<libwebrtc::LocalDesktopCapturerParameters> parameters,
@@ -79,6 +89,8 @@ class LocalDesktopCaptureTrackSource : public webrtc::VideoTrackSource {
     return nullptr;
   }
 
+  LocalDesktopCapturer* CapturerSource() const { return capturer_.get(); }
+
  protected:
   explicit LocalDesktopCaptureTrackSource(
       std::unique_ptr<LocalDesktopCapturer> capturer)
@@ -93,31 +105,4 @@ class LocalDesktopCaptureTrackSource : public webrtc::VideoTrackSource {
 };
 }  // namespace internal
 }  // namespace webrtc
-
-namespace libwebrtc {
-
-class ScreenCapturerTrackSource : public webrtc::VideoTrackSource {
- public:
-  static rtc::scoped_refptr<ScreenCapturerTrackSource> Create(
-      scoped_refptr<RTCDesktopCapturer> capturer) {
-    if (capturer) {
-      return rtc::make_ref_counted<ScreenCapturerTrackSource>(capturer);
-    }
-    return nullptr;
-  }
-
- public:
-  explicit ScreenCapturerTrackSource(scoped_refptr<RTCDesktopCapturer> capturer)
-      : VideoTrackSource(/*remote=*/false), capturer_(std::move(capturer)) {}
-  virtual ~ScreenCapturerTrackSource() { capturer_->Stop(); }
-
- private:
-  rtc::VideoSourceInterface<webrtc::VideoFrame>* source() override {
-    return static_cast<RTCDesktopCapturerImpl*>(capturer_.get());
-  }
-
-  scoped_refptr<RTCDesktopCapturer> capturer_;
-};
-
-}  // namespace libwebrtc
 #endif

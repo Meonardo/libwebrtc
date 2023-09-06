@@ -18,7 +18,7 @@
 #include "modules/desktop_capture/win/window_capture_utils.h"
 #endif
 
-#include "internal/desktop_capturer.h"
+#include "rtc_desktop_capturer_impl.h"
 #include "src/internal/base_desktop_capturer.h"
 
 namespace libwebrtc {
@@ -29,10 +29,55 @@ RTCDesktopCapturerImpl2::RTCDesktopCapturerImpl2(
     std::unique_ptr<webrtc::internal::LocalDesktopCapturer> video_capturer)
     : desktop_capturer_(std::move(video_capturer)) {}
 
+RTCDesktopCapturerImpl2::~RTCDesktopCapturerImpl2() {
+  RTC_LOG(LS_APP) << "RTCDesktopCapturerImpl2 dtor";
+  capturer_source_track_ = nullptr;
+}
+
 std::unique_ptr<webrtc::internal::LocalDesktopCapturer>
 RTCDesktopCapturerImpl2::desktop_capturer() {
   return std::unique_ptr<webrtc::internal::LocalDesktopCapturer>(
       std::move(desktop_capturer_));
+}
+
+bool RTCDesktopCapturerImpl2::StartCapture() {
+  if (capturer_source_track_ == nullptr) {
+    RTC_LOG(LS_ERROR) << "capturer_source_track_ not exists";
+    return false;
+  }
+
+  auto vcm = reinterpret_cast<webrtc::internal::LocalDesktopCapturer*>(
+      capturer_source_track_->CapturerSource());
+
+  return vcm->StartCapture();
+}
+
+bool RTCDesktopCapturerImpl2::CaptureStarted() {
+  if (capturer_source_track_ == nullptr) {
+    RTC_LOG(LS_ERROR) << "capturer_source_track_ not exists";
+    return false;
+  }
+
+  auto vcm = reinterpret_cast<webrtc::internal::LocalDesktopCapturer*>(
+      capturer_source_track_->CapturerSource());
+  return vcm->CaptureStarted();
+}
+
+void RTCDesktopCapturerImpl2::StopCapture() {
+  if (capturer_source_track_ == nullptr) {
+    RTC_LOG(LS_ERROR) << "capturer_source_track_ not exists";
+    return;
+  }
+
+  auto vcm = reinterpret_cast<webrtc::internal::LocalDesktopCapturer*>(
+      capturer_source_track_->CapturerSource());
+  vcm->StopCapture();
+}
+
+void RTCDesktopCapturerImpl2::SaveVideoSourceTrack(
+    rtc::scoped_refptr<webrtc::internal::LocalDesktopCaptureTrackSource>
+        source) {
+  capturer_source_track_ = source;
 }
 
 RTCDesktopCapturerImpl::RTCDesktopCapturerImpl(

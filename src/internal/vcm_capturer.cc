@@ -113,6 +113,37 @@ VcmCapturer* VcmCapturer::Create(rtc::Thread* worker_thread,
   return vcm_capturer.release();
 }
 
+bool VcmCapturer::StartCapture() {
+  if (CaptureStarted())
+    return true;
+
+  int32_t result = worker_thread_->Invoke<bool>(
+      RTC_FROM_HERE, [&] { return vcm_->StartCapture(capability_); });
+
+  if (result != 0) {
+    Destroy();
+    return false;
+  }
+
+  return true;
+}
+
+bool VcmCapturer::CaptureStarted() {
+  if (vcm_ != nullptr) {
+    RTC_LOG(LS_ERROR) << "vcm_ is nullptr";
+    return false;
+  }
+    
+  return worker_thread_->Invoke<bool>(RTC_FROM_HERE,
+                                      [&] { return vcm_->CaptureStarted(); });
+}
+
+void VcmCapturer::StopCapture() {
+  worker_thread_->Invoke<void>(RTC_FROM_HERE, [&] {
+    vcm_->StopCapture();
+  });
+}
+
 void VcmCapturer::Destroy() {
   if (!vcm_)
     return;

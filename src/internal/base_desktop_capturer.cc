@@ -146,7 +146,8 @@ int32_t BasicScreenCapturer::StartCapture(
     }
   }
 
-  screen_capturer_->Start(this);
+  if (!capture_restarted_)
+    screen_capturer_->Start(this);
 
   screen_capture_thread_.reset(
       new BasicScreenCaptureThread(this, capabilit.maxFPS));
@@ -157,6 +158,7 @@ int32_t BasicScreenCapturer::StartCapture(
   }
 
   capture_started_ = true;
+  capture_restarted_ = false;
   return 0;
 }
 
@@ -172,6 +174,7 @@ int32_t BasicScreenCapturer::StopCapture() {
     screen_capture_thread_.reset();
   }
   capture_started_ = false;
+  capture_restarted_ = true; 
   return 0;
 }
 

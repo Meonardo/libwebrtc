@@ -22,8 +22,42 @@ class RTCVideoCapturerImpl : public RTCVideoCapturer {
   }
 
   ~RTCVideoCapturerImpl() {
-    RTC_LOG(LS_ERROR) << "RTCVideoCapturerImpl dtor";
+    RTC_LOG(LS_APP) << "RTCVideoCapturerImpl dtor";
     capturer_source_track_ = nullptr;
+  }
+
+  bool StartCapture() override {
+    if (capturer_source_track_ == nullptr) {
+      RTC_LOG(LS_ERROR) << "capturer_source_track_ not exists";
+      return false;
+    }
+
+    auto vcm = reinterpret_cast<webrtc::internal::VcmCapturer*>(
+        capturer_source_track_->CapturerSource());
+
+    return vcm->StartCapture();
+  }
+
+  bool CaptureStarted() override {
+    if (capturer_source_track_ == nullptr) {
+      RTC_LOG(LS_ERROR) << "capturer_source_track_ not exists";
+      return false;
+    }
+
+    auto vcm = reinterpret_cast<webrtc::internal::VcmCapturer*>(
+        capturer_source_track_->CapturerSource());
+    return vcm->CaptureStarted();
+  }
+
+  void StopCapture() override {
+    if (capturer_source_track_ == nullptr) {
+      RTC_LOG(LS_ERROR) << "capturer_source_track_ not exists";
+      return;
+    }
+
+    auto vcm = reinterpret_cast<webrtc::internal::VcmCapturer*>(
+        capturer_source_track_->CapturerSource());
+    vcm->StopCapture();
   }
 
   virtual bool UpdateCaptureDevice(size_t width,

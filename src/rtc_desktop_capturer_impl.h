@@ -17,7 +17,6 @@
 #ifndef LIBWEBRTC_RTC_DESKTOP_CAPTURER_IMPL_HXX
 #define LIBWEBRTC_RTC_DESKTOP_CAPTURER_IMPL_HXX
 
-#include "include/rtc_desktop_capturer.h"
 #include "include/rtc_types.h"
 
 #include "api/video/i420_buffer.h"
@@ -28,25 +27,27 @@
 #include "modules/desktop_capture/desktop_frame.h"
 #include "rtc_base/thread.h"
 
-#include "src/internal/vcm_capturer.h"
-#include "src/internal/video_capturer.h"
-
-namespace webrtc {
-namespace internal {
-class LocalDesktopCapturer;
-}
-}  // namespace webrtc
+#include "src/internal/desktop_capturer.h"
 
 namespace libwebrtc {
 class RTCDesktopCapturerImpl2 : public RTCDesktopCapturer2 {
  public:
   RTCDesktopCapturerImpl2(
       std::unique_ptr<webrtc::internal::LocalDesktopCapturer> video_capturer);
+  ~RTCDesktopCapturerImpl2();
 
   std::unique_ptr<webrtc::internal::LocalDesktopCapturer> desktop_capturer();
 
+  virtual bool StartCapture() override;
+  virtual bool CaptureStarted() override;
+  virtual void StopCapture() override;
+
+  void SaveVideoSourceTrack(
+      rtc::scoped_refptr<webrtc::internal::LocalDesktopCaptureTrackSource> source);
  private:
   std::unique_ptr<webrtc::internal::LocalDesktopCapturer> desktop_capturer_;
+  rtc::scoped_refptr<webrtc::internal::LocalDesktopCaptureTrackSource>
+      capturer_source_track_;
 };
 
 class RTCDesktopCapturerImpl : public RTCDesktopCapturer,
@@ -105,6 +106,29 @@ class RTCDesktopCapturerImpl : public RTCDesktopCapturer,
   uint32_t y_ = 0;
   uint32_t w_ = 0;
   uint32_t h_ = 0;
+};
+
+class ScreenCapturerTrackSource : public webrtc::VideoTrackSource {
+ public:
+  static rtc::scoped_refptr<ScreenCapturerTrackSource> Create(
+      scoped_refptr<RTCDesktopCapturer> capturer) {
+    if (capturer) {
+      return rtc::make_ref_counted<ScreenCapturerTrackSource>(capturer);
+    }
+    return nullptr;
+  }
+
+ public:
+  explicit ScreenCapturerTrackSource(scoped_refptr<RTCDesktopCapturer> capturer)
+      : VideoTrackSource(/*remote=*/false), capturer_(std::move(capturer)) {}
+  virtual ~ScreenCapturerTrackSource() { capturer_->Stop(); }
+
+ private:
+  rtc::VideoSourceInterface<webrtc::VideoFrame>* source() override {
+    return static_cast<RTCDesktopCapturerImpl*>(capturer_.get());
+  }
+
+  scoped_refptr<RTCDesktopCapturer> capturer_;
 };
 
 }  // namespace libwebrtc

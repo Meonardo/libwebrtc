@@ -49,6 +49,35 @@ bool LocalDesktopCapturer::Init(
   return true;
 }
 
+bool LocalDesktopCapturer::StartCapture() {
+  if (vcm_ == nullptr) {
+    RTC_LOG(LS_ERROR) << "vcm_ is nullptr";
+    return false;
+  }
+
+  int32_t result = vcm_->StartCapture(capability_);
+
+  if (result != 0) {
+    Destroy();
+    return false;
+  }
+
+  return true;
+}
+
+bool LocalDesktopCapturer::CaptureStarted() {
+  if (vcm_ == nullptr) {
+    RTC_LOG(LS_ERROR) << "vcm_ is nullptr";
+    return false;
+  }
+
+  return vcm_->CaptureStarted();
+}
+
+void LocalDesktopCapturer::StopCapture() {
+  vcm_->StopCapture();
+}
+
 void LocalDesktopCapturer::Destroy() {
   if (!vcm_)
     return;
