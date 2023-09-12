@@ -54,6 +54,7 @@ class VcmCapturer : public VideoCapturer,
   void Destroy();
 
   rtc::scoped_refptr<VideoCaptureModule> vcm_;
+  int last_capture_device_index_ = -1;
   rtc::Thread* worker_thread_ = nullptr;
   VideoCaptureCapability capability_;
 };

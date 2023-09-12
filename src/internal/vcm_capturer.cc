@@ -67,6 +67,9 @@ bool VcmCapturer::Init(size_t width,
   RTC_CHECK(worker_thread_->Invoke<bool>(
       RTC_FROM_HERE, [&] { return vcm_->CaptureStarted(); }));
 
+  // save the capture device index
+  last_capture_device_index_ = capture_device_index;
+
   return true;
 }
 
@@ -105,7 +108,7 @@ VcmCapturer* VcmCapturer::Create(rtc::Thread* worker_thread,
                                  size_t capture_device_index) {
   std::unique_ptr<VcmCapturer> vcm_capturer(new VcmCapturer(worker_thread));
   if (!vcm_capturer->Init(width, height, target_fps, capture_device_index)) {
-    RTC_LOG(LS_WARNING) << "Failed to create VcmCapturer(w = " << width
+    RTC_LOG(LS_ERROR) << "Failed to create VcmCapturer(w = " << width
                         << ", h = " << height << ", fps = " << target_fps
                         << ")";
     return nullptr;
@@ -116,6 +119,19 @@ VcmCapturer* VcmCapturer::Create(rtc::Thread* worker_thread,
 bool VcmCapturer::StartCapture() {
   if (CaptureStarted())
     return true;
+  if (vcm_ == nullptr) {
+    RTC_LOG(LS_APP)
+        << "vcm_ is nullptr when call StartCapture, try to init vcm_";
+    if (last_capture_device_index_) {
+      if (!Init(capability_.width, capability_.height, capability_.maxFPS,
+                last_capture_device_index_)) {
+        RTC_LOG(LS_ERROR) << "Failed to init vcm_";
+        return false;
+      }
+      RTC_LOG(LS_APP) << "Init vcm_ success at StartCapture";
+      return true;
+    }
+  }
 
   int32_t result = worker_thread_->Invoke<bool>(
       RTC_FROM_HERE, [&] { return vcm_->StartCapture(capability_); });
@@ -133,15 +149,17 @@ bool VcmCapturer::CaptureStarted() {
     RTC_LOG(LS_ERROR) << "vcm_ is nullptr";
     return false;
   }
-    
+
   return worker_thread_->Invoke<bool>(RTC_FROM_HERE,
                                       [&] { return vcm_->CaptureStarted(); });
 }
 
 void VcmCapturer::StopCapture() {
-  worker_thread_->Invoke<void>(RTC_FROM_HERE, [&] {
-    vcm_->StopCapture();
-  });
+  if (vcm_ == nullptr) {
+    RTC_LOG(LS_ERROR) << "vcm_ is nullptr";
+    return;
+  }
+  worker_thread_->Invoke<void>(RTC_FROM_HERE, [&] { vcm_->StopCapture(); });
 }
 
 void VcmCapturer::Destroy() {
