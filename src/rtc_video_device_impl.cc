@@ -43,7 +43,11 @@ uint32_t RTCVideoDeviceImpl::GetCaptureDeviceCapabilityCount(
   if (!device_info_) {
     return 0;
   }
-  return device_info_->NumberOfCapabilities(deviceUniqueIdUTF8);
+  auto ret = device_info_->NumberOfCapabilities(deviceUniqueIdUTF8);
+  if (ret < 0) {
+    return 0;
+  }
+  return ret;
 }
 
 int32_t RTCVideoDeviceImpl::GetCaptureDeviceCapability(

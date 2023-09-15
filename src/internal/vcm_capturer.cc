@@ -82,7 +82,6 @@ bool VcmCapturer::UpdateCaptureDevice(size_t width,
 
   if (!vcm_) {
     RTC_LOG(LS_ERROR) << "the original device not exists";
-    return false;
   }
 
   // check if the target device exists
@@ -121,8 +120,8 @@ bool VcmCapturer::StartCapture() {
     return true;
   if (vcm_ == nullptr) {
     RTC_LOG(LS_APP)
-        << "vcm_ is nullptr when call StartCapture, try to init vcm_";
-    if (last_capture_device_index_) {
+        << "vcm_ is nullptr when call StartCapture, try to init vcm_, index: " << last_capture_device_index_;
+    if (last_capture_device_index_ >= 0) {
       if (!Init(capability_.width, capability_.height, capability_.maxFPS,
                 last_capture_device_index_)) {
         RTC_LOG(LS_ERROR) << "Failed to init vcm_";
