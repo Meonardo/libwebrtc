@@ -185,7 +185,8 @@ bool LocalDesktopCapturerImpl::InitEncoder(int width, int height) {
   // format.SetParam("level-id", "1");
 
   encoder_ = owt::base::MSDKVideoEncoder::Create(
-      format, encoded_file_save_path_, (mfxU16)qsv_encoder_quality_);
+      format, encoded_file_save_path_, (mfxU16)qsv_encoder_quality_,
+      MFX_RATECONTROL_CQP);
 
   webrtc::VideoCodec codec;
   codec.maxFramerate = max_framerate_;

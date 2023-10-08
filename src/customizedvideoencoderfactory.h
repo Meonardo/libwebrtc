@@ -21,9 +21,11 @@ class CustomizedEncodedVideoEncoderFactory : public webrtc::VideoEncoderFactory 
 
   // will restore after call `CreateVideoEncoder()`
   void ForceUsingEncodedEncoder() { is_encoded_source_ = true; }
+  void ForceUsingScreencastConfig() { is_screen_cast_ = true; }
 
  private:
-  bool is_encoded_source_; // default is true
+  bool is_encoded_source_; // default is false
+  bool is_screen_cast_; // default is false
   std::vector<webrtc::VideoCodecType> supported_codec_types_;
 };
 

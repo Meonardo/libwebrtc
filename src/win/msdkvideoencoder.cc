@@ -32,14 +32,16 @@ MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format)
 
 MSDKVideoEncoder::MSDKVideoEncoder(const cricket::VideoCodec& format,
                                    const std::string& write_to_filepath,
-                                   mfxU16 encode_q)
+                                   mfxU16 encode_q,
+                                   mfxU16 rate_control_method)
     : callback_(nullptr),
       bitrate_(0),
       width_(0),
       height_(0),
       encoder_thread_(rtc::Thread::Create()),
       inited_(false),
-      encoding_quality_(encode_q) {
+      encoding_quality_(encode_q),
+      rate_control_method_(rate_control_method) {
   m_penc_surfaces_ = nullptr;
   m_frames_processed_ = 0;
   encoder_thread_->SetName("MSDKVideoEncoderThread", nullptr);
@@ -99,7 +101,7 @@ int MSDKVideoEncoder::InitEncode(const webrtc::VideoCodec* codec_settings,
   bitrate_ = codec_settings->maxBitrate * 1000;
   frame_rate = codec_settings->maxFramerate;
   codec_type_ = codec_settings->codecType;
-  
+
   return encoder_thread_->Invoke<int>(
       RTC_FROM_HERE, [this, codec_settings, number_of_cores, max_payload_size] {
         return InitEncodeOnEncoderThread(codec_settings, number_of_cores,
@@ -139,11 +141,11 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
     size_t max_payload_size) {
   mfxStatus sts;
   RTC_LOG(LS_APP) << "InitEncodeOnEncoderThread: maxBitrate:"
-                    << codec_settings->maxBitrate
-                    << "framerate:" << codec_settings->maxFramerate
-                    << "targetBitRate:" << codec_settings->maxBitrate
-                    << "frame_height:" << codec_settings->height
-                    << "frame_width:" << codec_settings->width;
+                  << codec_settings->maxBitrate
+                  << "framerate:" << codec_settings->maxFramerate
+                  << "targetBitRate:" << codec_settings->maxBitrate
+                  << "frame_height:" << codec_settings->height
+                  << "frame_width:" << codec_settings->width;
   uint32_t codec_id = MFX_CODEC_AVC;
   switch (codec_type_) {
     case webrtc::kVideoCodecH264:
@@ -245,9 +247,9 @@ int MSDKVideoEncoder::InitEncodeOnEncoderThread(
 
   m_mfx_enc_params_.mfx.TargetUsage =
       encoding_quality_;  // default is: MFX_TARGETUSAGE_BALANCED
-  m_mfx_enc_params_.mfx.RateControlMethod = MFX_RATECONTROL_VBR;
-  m_mfx_enc_params_.mfx.TargetKbps = codec_settings->maxBitrate;  // in-kbps
-  m_mfx_enc_params_.mfx.MaxKbps = codec_settings->maxBitrate;     // in-kbps
+  m_mfx_enc_params_.mfx.RateControlMethod = rate_control_method_;
+  m_mfx_enc_params_.mfx.TargetKbps = codec_settings->maxBitrate;    // in-kbps
+  m_mfx_enc_params_.mfx.MaxKbps = codec_settings->maxBitrate;       // in-kbps
 
   MSDKConvertFrameRate(std::min(static_cast<int>(frame_rate), 30),
                        &m_mfx_enc_params_.mfx.FrameInfo.FrameRateExtN,
@@ -837,8 +839,10 @@ std::unique_ptr<MSDKVideoEncoder> MSDKVideoEncoder::Create(
 std::unique_ptr<MSDKVideoEncoder> MSDKVideoEncoder::Create(
     cricket::VideoCodec format,
     const std::string& save_to,
-    mfxU16 encode_quality) {
-  return absl::make_unique<MSDKVideoEncoder>(format, save_to, encode_quality);
+    mfxU16 encode_quality,
+    mfxU16 rate_control_method) {
+  return absl::make_unique<MSDKVideoEncoder>(format, save_to, encode_quality,
+                                             rate_control_method);
 }
 
 }  // namespace base

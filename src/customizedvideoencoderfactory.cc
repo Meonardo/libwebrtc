@@ -13,7 +13,7 @@
 
 namespace libwebrtc {
 CustomizedEncodedVideoEncoderFactory::CustomizedEncodedVideoEncoderFactory()
-    : is_encoded_source_(false) {
+    : is_encoded_source_(false), is_screen_cast_(false) {
   supported_codec_types_.clear();
   auto media_capability = owt::base::MediaCapabilities::Get();
   std::vector<owt::base::VideoCodec> codecs_to_check;
@@ -80,8 +80,18 @@ CustomizedEncodedVideoEncoderFactory::CreateVideoEncoder(
       return webrtc::H264Encoder::Create(cricket::VideoCodec(format));
     }
 
-    RTC_LOG(LS_APP) << "----- use hardware encoder";
-    return owt::base::MSDKVideoEncoder::Create(cricket::VideoCodec(format));
+    if (is_screen_cast_) {
+      RTC_LOG(LS_APP) << "----- using hardware encoder screencast";
+
+      is_screen_cast_ = false;
+      return owt::base::MSDKVideoEncoder::Create(cricket::VideoCodec(format),
+                                                 "", MFX_TARGETUSAGE_BEST_SPEED,
+                                                 MFX_RATECONTROL_CBR);
+    } else {
+      RTC_LOG(LS_APP) << "----- using hardware encoder";
+
+      return owt::base::MSDKVideoEncoder::Create(cricket::VideoCodec(format));
+    }
   }
 }
 
