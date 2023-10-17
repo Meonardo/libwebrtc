@@ -1,6 +1,9 @@
 #include "customizedvideoencoderfactory.h"
 #include <string>
 #include "absl/strings/match.h"
+#include "api/video_codecs/builtin_video_encoder_factory.h"
+#include "media/engine/encoder_simulcast_proxy.h"
+#include "media/engine/internal_encoder_factory.h"
 #include "modules/video_coding/codecs/av1/libaom_av1_encoder.h"
 #include "modules/video_coding/codecs/h264/include/h264.h"
 #include "modules/video_coding/codecs/vp8/include/vp8.h"
@@ -15,26 +18,32 @@ namespace libwebrtc {
 CustomizedEncodedVideoEncoderFactory::CustomizedEncodedVideoEncoderFactory()
     : is_encoded_source_(false), is_screen_cast_(false) {
   supported_codec_types_.clear();
-  auto media_capability = owt::base::MediaCapabilities::Get();
-  std::vector<owt::base::VideoCodec> codecs_to_check;
-  codecs_to_check.push_back(owt::base::VideoCodec::kH264);
-  codecs_to_check.push_back(owt::base::VideoCodec::kVp9);
-  codecs_to_check.push_back(owt::base::VideoCodec::kH265);
-  codecs_to_check.push_back(owt::base::VideoCodec::kAv1);
-  codecs_to_check.push_back(owt::base::VideoCodec::kVp8);
-  std::vector<owt::base::VideoEncoderCapability> capabilities =
-      media_capability->SupportedCapabilitiesForVideoEncoder(codecs_to_check);
-  for (const auto& capability : capabilities) {
-    if (capability.codec_type == owt::base::VideoCodec::kH264)
-      supported_codec_types_.push_back(webrtc::kVideoCodecH264);
-    else if (capability.codec_type == owt::base::VideoCodec::kVp9)
-      supported_codec_types_.push_back(webrtc::kVideoCodecVP9);
-    else if (capability.codec_type == owt::base::VideoCodec::kH265)
-      supported_codec_types_.push_back(webrtc::kVideoCodecH265);
-    else if (capability.codec_type == owt::base::VideoCodec::kAv1)
-      supported_codec_types_.push_back(webrtc::kVideoCodecAV1);
-    else if (capability.codec_type == owt::base::VideoCodec::kVp8)
-      supported_codec_types_.push_back(webrtc::kVideoCodecVP8);
+  if (!owt::base::MediaCapabilities::Get()) {
+    // internal video encoder
+    internal_encoder_factory_ =
+        std::make_unique<webrtc::InternalEncoderFactory>();
+  } else {
+    auto media_capability = owt::base::MediaCapabilities::Get();
+    std::vector<owt::base::VideoCodec> codecs_to_check;
+    codecs_to_check.push_back(owt::base::VideoCodec::kH264);
+    codecs_to_check.push_back(owt::base::VideoCodec::kVp9);
+    codecs_to_check.push_back(owt::base::VideoCodec::kH265);
+    codecs_to_check.push_back(owt::base::VideoCodec::kAv1);
+    codecs_to_check.push_back(owt::base::VideoCodec::kVp8);
+    std::vector<owt::base::VideoEncoderCapability> capabilities =
+        media_capability->SupportedCapabilitiesForVideoEncoder(codecs_to_check);
+    for (const auto& capability : capabilities) {
+      if (capability.codec_type == owt::base::VideoCodec::kH264)
+        supported_codec_types_.push_back(webrtc::kVideoCodecH264);
+      else if (capability.codec_type == owt::base::VideoCodec::kVp9)
+        supported_codec_types_.push_back(webrtc::kVideoCodecVP9);
+      else if (capability.codec_type == owt::base::VideoCodec::kH265)
+        supported_codec_types_.push_back(webrtc::kVideoCodecH265);
+      else if (capability.codec_type == owt::base::VideoCodec::kAv1)
+        supported_codec_types_.push_back(webrtc::kVideoCodecAV1);
+      else if (capability.codec_type == owt::base::VideoCodec::kVp8)
+        supported_codec_types_.push_back(webrtc::kVideoCodecVP8);
+    }
   }
 }
 
@@ -45,6 +54,18 @@ CustomizedEncodedVideoEncoderFactory::CreateVideoEncoder(
     is_encoded_source_ = false;
     return owt::base::CustomizedVideoEncoderProxy::Create();
   } else {
+    if (!owt::base::MediaCapabilities::Get()) {
+      // internal video encoder
+      std::unique_ptr<webrtc::VideoEncoder> internal_encoder;
+      if (format.IsCodecInList(
+              internal_encoder_factory_->GetSupportedFormats())) {
+        internal_encoder = std::make_unique<webrtc::EncoderSimulcastProxy>(
+            internal_encoder_factory_.get(), format);
+      }
+
+      return internal_encoder;
+    }
+
     bool vp9_hw = false, vp8_hw = false, av1_hw = false, h264_hw = false;
     bool h265_hw = false;
     for (auto& codec : supported_codec_types_) {
@@ -74,9 +95,9 @@ CustomizedEncodedVideoEncoderFactory::CreateVideoEncoder(
              !h265_hw) {
     } else if (absl::EqualsIgnoreCase(format.name, cricket::kH264CodecName) &&
                !h264_hw) {
-      RTC_LOG(LS_APP)
-          << "----- "
-          << "not support hardware H264 encoder, fallback to software encoder";
+      RTC_LOG(LS_APP) << "----- "
+                      << "not support hardware H264 encoder, fallback to "
+                         "software encoder";
       return webrtc::H264Encoder::Create(cricket::VideoCodec(format));
     }
 
@@ -102,6 +123,10 @@ CustomizedEncodedVideoEncoderFactory::GetSupportedFormats() const {
     supported_codecs.push_back(
         owt::base::CodecUtils::GetConstrainedBaselineH264Codec());
   } else {
+    if (!owt::base::MediaCapabilities::Get()) {
+      return internal_encoder_factory_->GetSupportedFormats();
+    }
+
     supported_codecs.push_back(webrtc::SdpVideoFormat(cricket::kVp8CodecName));
     supported_codecs.push_back(webrtc::SdpVideoFormat(cricket::kAv1CodecName));
 

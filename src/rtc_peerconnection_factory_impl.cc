@@ -61,9 +61,6 @@ bool GlobalConfiguration::GetCustomizedAudioInputEnabled() {
 }
 
 std::unique_ptr<webrtc::VideoEncoderFactory> CreateCustomVideoEncoderFactory() {
-  if (!owt::base::MediaCapabilities::Get()) {
-    return webrtc::CreateBuiltinVideoEncoderFactory();
-  }
   return std::make_unique<CustomizedEncodedVideoEncoderFactory>();
 }
 

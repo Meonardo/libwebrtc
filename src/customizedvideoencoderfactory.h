@@ -27,6 +27,7 @@ class CustomizedEncodedVideoEncoderFactory : public webrtc::VideoEncoderFactory 
   bool is_encoded_source_; // default is false
   bool is_screen_cast_; // default is false
   std::vector<webrtc::VideoCodecType> supported_codec_types_;
+  std::unique_ptr<webrtc::VideoEncoderFactory> internal_encoder_factory_;
 };
 
 } // namespace libwebrtc
