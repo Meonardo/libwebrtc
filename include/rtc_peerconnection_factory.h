@@ -108,6 +108,8 @@ class RTCPeerConnectionFactory : public RefCountInterface {
       RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>* renderer) = 0;
 
   virtual bool ForceUsingEncodedVideoEncoder() = 0;
+  virtual bool RestoreNormalVideoEncoder() = 0;
+  
   virtual bool ForceUsingScreencastConfig() = 0;
 };
 

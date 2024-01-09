@@ -537,6 +537,25 @@ bool RTCPeerConnectionFactoryImpl::ForceUsingEncodedVideoEncoder() {
   return true;
 }
 
+bool RTCPeerConnectionFactoryImpl::RestoreNormalVideoEncoder() {
+  if (!GlobalConfiguration::GetCustomizedVideoEncoderEnabled()) {
+    return false;
+  }
+  auto video_encoder_factory = GetVideoEncoderFactory();
+  if (video_encoder_factory == nullptr) {
+    return false;
+  }
+
+  auto customized_factory =
+      static_cast<CustomizedEncodedVideoEncoderFactory*>(video_encoder_factory);
+  if (customized_factory == nullptr) {
+    return false;
+  }
+  customized_factory->RestoreUsingNormalEncoder();
+
+  return true;
+}
+
 bool RTCPeerConnectionFactoryImpl::ForceUsingScreencastConfig() {
   if (!GlobalConfiguration::GetCustomizedVideoEncoderEnabled()) {
     return false;

@@ -96,6 +96,8 @@ class RTCPeerConnectionFactoryImpl : public RTCPeerConnectionFactory {
       RTCVideoRenderer<scoped_refptr<RTCVideoFrame>>* renderer) override;
 
   virtual bool ForceUsingEncodedVideoEncoder() override;
+  virtual bool RestoreNormalVideoEncoder() override;
+
   virtual bool ForceUsingScreencastConfig() override;
 
   rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface>

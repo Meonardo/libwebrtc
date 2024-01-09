@@ -1,5 +1,9 @@
 #include "customizedvideoencoderfactory.h"
+
+#include <chrono>
 #include <string>
+#include <thread>
+
 #include "absl/strings/match.h"
 #include "api/video_codecs/builtin_video_encoder_factory.h"
 #include "media/engine/encoder_simulcast_proxy.h"
@@ -47,13 +51,40 @@ CustomizedEncodedVideoEncoderFactory::CustomizedEncodedVideoEncoderFactory()
   }
 }
 
+void CustomizedEncodedVideoEncoderFactory::ForceUsingEncodedEncoder() {
+  std::lock_guard<std::mutex> guard(encoded_source_mutex_);
+
+  while (is_encoded_mutex_locked_.load()) {
+    // wait until the mutex is unlocked
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  is_encoded_mutex_locked_.store(true);
+  is_encoded_source_.store(true);
+}
+
+void CustomizedEncodedVideoEncoderFactory::RestoreUsingNormalEncoder() {
+  std::lock_guard<std::mutex> guard(encoded_source_mutex_);
+
+  while (is_encoded_mutex_locked_.load()) {
+    // wait until the mutex is unlocked
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  is_encoded_mutex_locked_.store(true);
+  is_encoded_source_.store(false);
+}
+
 std::unique_ptr<webrtc::VideoEncoder>
 CustomizedEncodedVideoEncoderFactory::CreateVideoEncoder(
     const webrtc::SdpVideoFormat& format) {
-  if (is_encoded_source_) {
-    is_encoded_source_ = false;
+  if (is_encoded_source_.load()) {
+    is_encoded_mutex_locked_.store(false);
+
     return owt::base::CustomizedVideoEncoderProxy::Create();
   } else {
+    is_encoded_mutex_locked_.store(false);
+
     if (!owt::base::MediaCapabilities::Get()) {
       // internal video encoder
       std::unique_ptr<webrtc::VideoEncoder> internal_encoder;
@@ -119,7 +150,7 @@ CustomizedEncodedVideoEncoderFactory::CreateVideoEncoder(
 std::vector<webrtc::SdpVideoFormat>
 CustomizedEncodedVideoEncoderFactory::GetSupportedFormats() const {
   std::vector<webrtc::SdpVideoFormat> supported_codecs;
-  if (is_encoded_source_) {
+  if (is_encoded_source_.load()) {
     supported_codecs.push_back(
         owt::base::CodecUtils::GetConstrainedBaselineH264Codec());
   } else {

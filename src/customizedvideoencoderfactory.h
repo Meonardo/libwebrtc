@@ -2,6 +2,9 @@
 #define CUSTOMIZED_ENCODEDERVIDEOFACTORY_H_
 
 #include <vector>
+#include <mutex>
+#include <atomic>
+
 #include "api/video_codecs/sdp_video_format.h"
 #include "api/video_codecs/video_encoder.h"
 #include "api/video_codecs/video_encoder_factory.h"
@@ -20,11 +23,14 @@ class CustomizedEncodedVideoEncoderFactory : public webrtc::VideoEncoderFactory 
   std::vector<webrtc::SdpVideoFormat> GetSupportedFormats() const override;
 
   // will restore after call `CreateVideoEncoder()`
-  void ForceUsingEncodedEncoder() { is_encoded_source_ = true; }
+  void ForceUsingEncodedEncoder();
+  void RestoreUsingNormalEncoder();
   void ForceUsingScreencastConfig() { is_screen_cast_ = true; }
 
  private:
-  bool is_encoded_source_; // default is false
+  std::atomic<bool> is_encoded_source_; // default is false
+  mutable std::mutex encoded_source_mutex_;
+  std::atomic<bool> is_encoded_mutex_locked_{false};
   bool is_screen_cast_; // default is false
   std::vector<webrtc::VideoCodecType> supported_codec_types_;
   std::unique_ptr<webrtc::VideoEncoderFactory> internal_encoder_factory_;
