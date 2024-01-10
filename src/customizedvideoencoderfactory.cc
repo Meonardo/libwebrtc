@@ -20,7 +20,9 @@
 
 namespace libwebrtc {
 CustomizedEncodedVideoEncoderFactory::CustomizedEncodedVideoEncoderFactory()
-    : is_encoded_source_(false), is_screen_cast_(false) {
+    : is_encoded_source_(false),
+      is_encoded_mutex_locked_(false),
+      is_screen_cast_(false) {
   supported_codec_types_.clear();
   if (!owt::base::MediaCapabilities::Get()) {
     // internal video encoder
@@ -55,7 +57,7 @@ void CustomizedEncodedVideoEncoderFactory::ForceUsingEncodedEncoder() {
   std::lock_guard<std::mutex> guard(encoded_source_mutex_);
 
   while (is_encoded_mutex_locked_.load()) {
-    // wait until the mutex is unlocked
+    // wait until the `is_encoded_mutex_locked_` is unlocked
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
@@ -67,7 +69,7 @@ void CustomizedEncodedVideoEncoderFactory::RestoreUsingNormalEncoder() {
   std::lock_guard<std::mutex> guard(encoded_source_mutex_);
 
   while (is_encoded_mutex_locked_.load()) {
-    // wait until the mutex is unlocked
+    // wait until the `is_encoded_mutex_locked_` is unlocked
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
