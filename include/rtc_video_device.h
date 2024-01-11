@@ -3,7 +3,17 @@
 
 #include "rtc_types.h"
 
+#include <functional>
+
 namespace libwebrtc {
+
+class RTCJpegCapturerCallback {
+ public:
+  virtual ~RTCJpegCapturerCallback() {}
+  virtual void OnEncodeJpeg(const char* id,
+                            const uint8_t* data,
+                            size_t size) = 0;
+};
 
 enum class VideoType {
   kUnknown,
@@ -37,11 +47,16 @@ class RTCVideoCapturer : public RefCountInterface {
   virtual bool CaptureStarted() = 0;
 
   virtual void StopCapture() = 0;
-  
+
   virtual bool UpdateCaptureDevice(size_t width,
                                    size_t height,
                                    size_t target_fps,
                                    size_t capture_device_index) = 0;
+
+  virtual void StartEncodeJpeg(const char* id,
+                               uint16_t delay_timeinterval,
+                               RTCJpegCapturerCallback* data_cb) = 0;
+  virtual void StopEncodeJpeg() = 0;
 };
 
 class RTCVideoDevice : public RefCountInterface {

@@ -15,13 +15,74 @@
 
 #include "modules/video_capture/video_capture_factory.h"
 #include "rtc_base/checks.h"
+#include "rtc_base/internal/default_socket_server.h"
 #include "rtc_base/logging.h"
+
+#include "rtc_video_device.h"
+
+#include "turbojpeg.h"
 
 namespace webrtc {
 namespace internal {
 
+class BasicJPEGCaptureThread : public rtc::Thread, public rtc::MessageHandler {
+ public:
+  explicit BasicJPEGCaptureThread(VcmCapturer* capturer,
+                                  uint16_t delay_timeinterval)
+      : rtc::Thread(rtc::CreateDefaultSocketServer()),
+        capturer_(capturer),
+        finished_(false),
+        waiting_time_ms_(delay_timeinterval) {
+    this->SetName("JPEGEncodeInvokeThread", nullptr);
+  }
+
+  virtual ~BasicJPEGCaptureThread() { Stop(); }
+  // Override virtual method of parent Thread. Context: Worker Thread.
+  virtual void Run() {
+    // Read the first frame and start the message pump. The pump runs until
+    // Stop() is called externally or Quit() is called by OnMessage().
+    if (capturer_) {
+      capturer_->EncodeJpeg();
+      rtc::Thread::Current()->Post(RTC_FROM_HERE, this);
+      rtc::Thread::Current()->ProcessMessages(kForever);
+    }
+    webrtc::MutexLock lock(&mutex_);
+    finished_ = true;
+  }
+  // Override virtual method of parent MessageHandler. Context: Worker Thread.
+  virtual void OnMessage(rtc::Message* /*pmsg*/) {
+    if (capturer_) {
+      capturer_->EncodeJpeg();
+      // set capture time interval
+      if (waiting_time_ms_ > 0) {
+        rtc::Thread::Current()->PostDelayed(RTC_FROM_HERE, waiting_time_ms_,
+                                            this);
+      } else {
+        rtc::Thread::Current()->Post(RTC_FROM_HERE, this);
+      }
+    } else {
+      rtc::Thread::Current()->Quit();
+    }
+  }
+  // Check if Run() is finished.
+  bool Finished() const {
+    webrtc::MutexLock lock(&mutex_);
+    return finished_;
+  }
+
+ private:
+  VcmCapturer* capturer_;
+  mutable webrtc::Mutex mutex_;
+  bool finished_;
+  int waiting_time_ms_;
+};
+
 VcmCapturer::VcmCapturer(rtc::Thread* worker_thread)
-    : vcm_(nullptr), worker_thread_(worker_thread) {}
+    : vcm_(nullptr),
+      worker_thread_(worker_thread),
+      video_buffer_(nullptr),
+      jpeg_thread_(nullptr),
+      jpeg_data_cb_(nullptr) {}
 
 bool VcmCapturer::Init(size_t width,
                        size_t height,
@@ -176,10 +237,70 @@ void VcmCapturer::Destroy() {
 
 VcmCapturer::~VcmCapturer() {
   Destroy();
+  if (jpeg_thread_) {
+    jpeg_thread_->Quit();
+    jpeg_thread_.reset();
+  }
 }
 
 void VcmCapturer::OnFrame(const VideoFrame& frame) {
+  video_buffer_ = frame.video_frame_buffer();
   VideoCapturer::OnFrame(frame);
+}
+
+void VcmCapturer::EncodeJpeg() {
+  if (video_buffer_) {
+    int w = video_buffer_->width();
+    int h = video_buffer_->height();
+    const uint8_t* data = video_buffer_->GetI420()->DataY();
+
+    uint8_t* data_copy = new uint8_t[w * h * 3 / 2];
+    memcpy(data_copy, data, w * h * 3 / 2);
+
+    // compress to jpeg by using the best quality
+    unsigned char* jpeg_buf = NULL;
+    unsigned long jpeg_size = 0;
+    tjhandle compressor = tjInitCompress();
+    int ret = tjCompressFromYUV(compressor, data_copy, w, 1, h, TJ_420,
+                                &jpeg_buf, &jpeg_size, 70, TJFLAG_FASTDCT);
+    tjDestroy(compressor);
+    if (ret != 0) {
+      RTC_LOG(LS_ERROR) << "compress failed";
+      return;
+    }
+    if (jpeg_data_cb_) {
+      jpeg_data_cb_->OnEncodeJpeg(jpeg_data_cb_id_.c_str(), jpeg_buf, jpeg_size);
+    }
+
+    tjFree(jpeg_buf);
+    delete[] data_copy;
+  }
+}
+
+void VcmCapturer::StartEncodeJpeg(const char* id, uint16_t delay_timeinterval,
+                                  libwebrtc::RTCJpegCapturerCallback* data_cb) {
+  if (jpeg_thread_) {
+    jpeg_thread_->Stop();
+    jpeg_thread_.reset();
+  }
+
+  jpeg_thread_.reset(new BasicJPEGCaptureThread(this, delay_timeinterval));
+  bool ret = jpeg_thread_->Start();
+  if (!ret) {
+    RTC_LOG(LS_ERROR) << "JPEG encode thread failed to start";
+    return;
+  }
+
+  jpeg_data_cb_ = data_cb;
+  jpeg_data_cb_id_ = std::string(id);
+}
+
+void VcmCapturer::StopEncodeJpeg() {
+  if (jpeg_thread_) {
+    jpeg_thread_->Stop();
+    jpeg_thread_.reset();
+  }
+  jpeg_data_cb_ = nullptr;
 }
 
 rtc::scoped_refptr<CapturerTrackSource> CapturerTrackSource::Create(

@@ -12,14 +12,21 @@
 
 #include <memory>
 #include <vector>
+#include <functional>
 
 #include "api/scoped_refptr.h"
 #include "modules/video_capture/video_capture.h"
 #include "rtc_base/thread.h"
 #include "src/internal/video_capturer.h"
 
+namespace libwebrtc {
+class RTCJpegCapturerCallback;
+}
+
 namespace webrtc {
 namespace internal {
+
+class BasicJPEGCaptureThread;
 
 class VcmCapturer : public VideoCapturer,
                     public rtc::VideoSinkInterface<VideoFrame> {
@@ -39,11 +46,18 @@ class VcmCapturer : public VideoCapturer,
 
   void StopCapture() override;
 
+  void EncodeJpeg();
+
   // change the capturing device dynamically
   bool UpdateCaptureDevice(size_t width,
-                           size_t height,
-                           size_t target_fps,
-                           size_t capture_device_index);
+                               size_t height,
+                               size_t target_fps,
+                               size_t capture_device_index);
+
+  // for encode jpeg
+  void StartEncodeJpeg(const char* id, uint16_t delay_timeinterval,
+                       libwebrtc::RTCJpegCapturerCallback* data_cb);
+  void StopEncodeJpeg();
 
  private:
   VcmCapturer(rtc::Thread* worker_thread);
@@ -57,6 +71,12 @@ class VcmCapturer : public VideoCapturer,
   int last_capture_device_index_ = -1;
   rtc::Thread* worker_thread_ = nullptr;
   VideoCaptureCapability capability_;
+
+  // for encode jpeg
+  rtc::scoped_refptr<webrtc::VideoFrameBuffer> video_buffer_;
+  std::unique_ptr<BasicJPEGCaptureThread> jpeg_thread_;
+  libwebrtc::RTCJpegCapturerCallback* jpeg_data_cb_;
+  std::string jpeg_data_cb_id_;
 };
 
 class CapturerTrackSource : public webrtc::VideoTrackSource {

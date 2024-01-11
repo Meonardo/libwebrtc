@@ -76,6 +76,31 @@ class RTCVideoCapturerImpl : public RTCVideoCapturer {
                                     capture_device_index);
   }
 
+  void StartEncodeJpeg(const char* id, uint16_t delay_timeinterval,
+                       RTCJpegCapturerCallback* data_cb) override {
+    if (capturer_source_track_ == nullptr) {
+      RTC_LOG(LS_ERROR) << "capturer_source_track_ not exists";
+      return;
+    }
+
+    auto vcm = reinterpret_cast<webrtc::internal::VcmCapturer*>(
+        capturer_source_track_->CapturerSource());
+
+    vcm->StartEncodeJpeg(id, delay_timeinterval, data_cb);
+  }
+
+  void StopEncodeJpeg() override {
+    if (capturer_source_track_ == nullptr) {
+      RTC_LOG(LS_ERROR) << "capturer_source_track_ not exists";
+      return;
+    }
+
+    auto vcm = reinterpret_cast<webrtc::internal::VcmCapturer*>(
+        capturer_source_track_->CapturerSource());
+
+    vcm->StopEncodeJpeg();
+  }
+
   void SaveVideoSourceTrack(
       rtc::scoped_refptr<webrtc::internal::CapturerTrackSource> source) {
     capturer_source_track_ = source;

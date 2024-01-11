@@ -240,6 +240,8 @@ rtc_shared_library("libwebrtc") {
     "../sdk:media_constraints",
     "//third_party/abseil-cpp/absl/memory",
     "//third_party/libyuv",
+    "//third_party/libjpeg_turbo:libjpeg",
+    "//third_party/libjpeg_turbo:turbojpeg",
   ]
 
   # screen capture device
