@@ -246,6 +246,8 @@ class RTCPeerConnection : public RefCountInterface {
   virtual scoped_refptr<RTCRtpTransceiver> AddTransceiver(
       RTCMediaType media_type, scoped_refptr<RTCRtpTransceiverInit> init) = 0;
 
+  virtual bool RemoveTransceiver(const string& mid) = 0;
+
   virtual bool RemoveTrack(scoped_refptr<RTCRtpSender> render) = 0;
 
   virtual vector<scoped_refptr<RTCRtpSender>> senders() = 0;

@@ -32,6 +32,41 @@ int32_t RTCVideoDeviceImpl::GetDeviceName(
   return 0;
 }
 
+uint32_t RTCVideoDeviceImpl::GetCaptureDeviceCapabilityCount(
+    const char* deviceUniqueIdUTF8) {
+  if (!device_info_) {
+    return 0;
+  }
+  auto ret = device_info_->NumberOfCapabilities(deviceUniqueIdUTF8);
+  if (ret < 0) {
+    return 0;
+  }
+  return ret;
+}
+
+int32_t RTCVideoDeviceImpl::GetCaptureDeviceCapability(
+    const char* deviceUniqueIdUTF8,
+    uint32_t deviceCapabilityNumber,
+    VideoCaptureCapability& capability) {
+  if (!device_info_) {
+    return -1;
+  }
+  webrtc::VideoCaptureCapability c;
+  auto ret = device_info_->GetCapability(deviceUniqueIdUTF8,
+                                         deviceCapabilityNumber, c);
+  if (ret != 0) {
+    return ret;
+  }
+
+  capability.width = c.width;
+  capability.height = c.height;
+  capability.maxFPS = c.maxFPS;
+  capability.videoType = static_cast<VideoType>(c.videoType);
+  capability.interlaced = c.interlaced;
+
+  return 0;
+}
+
 scoped_refptr<RTCVideoCapturer> RTCVideoDeviceImpl::Create(const char* name,
                                                            uint32_t index,
                                                            size_t width,

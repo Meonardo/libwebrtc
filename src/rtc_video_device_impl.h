@@ -32,6 +32,15 @@ class RTCVideoCapturerImpl : public RTCVideoCapturer {
     if (video_capturer_ != nullptr) video_capturer_->StopCapture();
   }
 
+  bool UpdateCaptureDevice(size_t width, size_t height,
+                                   size_t target_fps,
+                                   size_t capture_device_index) override { return true; }
+
+  void StartEncodeJpeg(const char* id, uint16_t delay_timeinterval,
+                       RTCJpegCapturerCallback* data_cb) override {}
+
+  void StopEncodeJpeg() override {}
+
  private:
   std::shared_ptr<webrtc::internal::VideoCapturer> video_capturer_;
 };
@@ -48,6 +57,13 @@ class RTCVideoDeviceImpl : public RTCVideoDevice {
                         uint32_t deviceUniqueIdUTF8Length,
                         char* productUniqueIdUTF8 = 0,
                         uint32_t productUniqueIdUTF8Length = 0) override;
+
+  virtual uint32_t GetCaptureDeviceCapabilityCount(
+      const char* deviceUniqueIdUTF8) override;
+  virtual int32_t GetCaptureDeviceCapability(
+      const char* deviceUniqueIdUTF8,
+      uint32_t deviceCapabilityNumber,
+      VideoCaptureCapability& capability) override;
 
   scoped_refptr<RTCVideoCapturer> Create(const char* name, uint32_t index,
                                          size_t width, size_t height,

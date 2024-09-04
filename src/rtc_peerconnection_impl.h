@@ -84,6 +84,8 @@ class RTCPeerConnectionImpl : public RTCPeerConnection,
       RTCMediaType media_type,
       scoped_refptr<RTCRtpTransceiverInit> init) override;
 
+  virtual bool RemoveTransceiver(const string& mid) override;
+
   virtual scoped_refptr<RTCRtpSender> AddTrack(
       scoped_refptr<RTCMediaTrack> track, vector<string> streamIds) override;
 
