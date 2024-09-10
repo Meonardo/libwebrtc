@@ -29,7 +29,8 @@ enum { kCaptureDelay = 33, kCaptureMessageId = 1000 };
 
 RTCDesktopCapturerImpl::RTCDesktopCapturerImpl(
     DesktopType type, webrtc::DesktopCapturer::SourceId source_id,
-    rtc::Thread* signaling_thread, scoped_refptr<MediaSource> source)
+    rtc::Thread* signaling_thread, scoped_refptr<MediaSource> source,
+    bool capture_cursor)
     : thread_(rtc::Thread::Create()),
       source_id_(source_id),
       signaling_thread_(signaling_thread),
@@ -45,12 +46,17 @@ RTCDesktopCapturerImpl::RTCDesktopCapturerImpl(
 #ifdef WEBRTC_LINUX
   if (type == kScreen) {
     options_.set_allow_pipewire(true);
+    options_.set_prefer_cursor_embedded(capture_cursor);
   }
 #endif
-  thread_->BlockingCall([this, type] {
+  thread_->BlockingCall([this, type, capture_cursor] {
     if (type == kScreen) {
-      capturer_ = std::make_unique<webrtc::DesktopAndCursorComposer>(
-          webrtc::DesktopCapturer::CreateScreenCapturer(options_), options_);
+      if (capture_cursor) {
+        capturer_ = std::make_unique<webrtc::DesktopAndCursorComposer>(
+            webrtc::DesktopCapturer::CreateScreenCapturer(options_), options_);
+      } else {
+        capturer_ = webrtc::DesktopCapturer::CreateScreenCapturer(options_);
+      }
     } else {
       capturer_ = std::make_unique<webrtc::DesktopAndCursorComposer>(
           webrtc::DesktopCapturer::CreateWindowCapturer(options_), options_);
