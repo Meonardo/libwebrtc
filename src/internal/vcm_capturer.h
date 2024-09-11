@@ -18,6 +18,10 @@
 #include "rtc_base/thread.h"
 #include "src/internal/video_capturer.h"
 
+namespace libwebrtc {
+class RTCJpegCapturerCallback;
+}
+
 namespace webrtc {
 namespace internal {
 
@@ -39,6 +43,10 @@ class VcmCapturer : public VideoCapturer,
   void StopCapture() override;
 
   void OnFrame(const VideoFrame& frame) override;
+
+  // change the capturing device dynamically
+  bool UpdateCaptureDevice(size_t width, size_t height, size_t target_fps,
+                           size_t capture_device_index) override;
 
  private:
   bool Init(size_t width, size_t height, size_t target_fps,

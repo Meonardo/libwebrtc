@@ -34,7 +34,12 @@ class RTCVideoCapturerImpl : public RTCVideoCapturer {
 
   bool UpdateCaptureDevice(size_t width, size_t height,
                                    size_t target_fps,
-                                   size_t capture_device_index) override { return true; }
+                                   size_t capture_device_index) override { 
+    if (video_capturer_ == nullptr) {
+      return false;
+    }
+    return video_capturer_->UpdateCaptureDevice(width, height, target_fps, capture_device_index);
+  }
 
   void StartEncodeJpeg(const char* id, uint16_t delay_timeinterval,
                        RTCJpegCapturerCallback* data_cb) override {}

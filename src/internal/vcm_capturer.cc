@@ -22,7 +22,8 @@ namespace webrtc {
 namespace internal {
 
 VcmCapturer::VcmCapturer(rtc::Thread* worker_thread)
-    : vcm_(nullptr), worker_thread_(worker_thread) {}
+    : vcm_(nullptr),
+      worker_thread_(worker_thread) {}
 
 bool VcmCapturer::Init(size_t width, size_t height, size_t target_fps,
                        size_t capture_device_index) {
@@ -108,6 +109,32 @@ VcmCapturer::~VcmCapturer() { Destroy(); }
 
 void VcmCapturer::OnFrame(const VideoFrame& frame) {
   VideoCapturer::OnFrame(frame);
+}
+
+bool VcmCapturer::UpdateCaptureDevice(size_t width, size_t height,
+                                      size_t target_fps,
+                                      size_t capture_device_index) {
+  std::unique_ptr<VideoCaptureModule::DeviceInfo> device_info(
+      VideoCaptureFactory::CreateDeviceInfo());
+
+  if (!vcm_) {
+    RTC_LOG(LS_ERROR) << "the original device not exists";
+  }
+
+  // check if the target device exists
+  char device_name[256];
+  char unique_name[256];
+  if (device_info->GetDeviceName(static_cast<uint32_t>(capture_device_index),
+                                 device_name, sizeof(device_name), unique_name,
+                                 sizeof(unique_name)) != 0) {
+    RTC_LOG(LS_ERROR) << "the target device not exists";
+    return false;
+  }
+
+  // stop capture, release old vcm_
+  Destroy();
+  // reinit vcm_ with target device info
+  return Init(width, height, target_fps, capture_device_index);
 }
 
 rtc::scoped_refptr<CapturerTrackSource> CapturerTrackSource::Create(
