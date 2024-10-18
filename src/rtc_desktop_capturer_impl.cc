@@ -191,25 +191,49 @@ void RTCDesktopCapturerImpl::OnCaptureResult(
   {
     width = w_ > 0 ? w_ : width;
     height = h_ > 0 ? h_ : height;
+
+    // check if need scale the frame
+    bool scale_required = false;
+    if (width < frame->size().width() || height < frame->size().height()) {
+      scale_required = true;
+    }
+
     if (!i420_buffer_ || !i420_buffer_.get() ||
         i420_buffer_->width() * i420_buffer_->height() != width * height) {
       i420_buffer_ = webrtc::I420Buffer::Create(width, height);
     }
 
-    libyuv::ConvertToI420(frame->data(), 0, i420_buffer_->MutableDataY(),
-                          i420_buffer_->StrideY(), i420_buffer_->MutableDataU(),
-                          i420_buffer_->StrideU(), i420_buffer_->MutableDataV(),
-                          i420_buffer_->StrideV(), x_, y_,
+    if (scale_required) {
+      std::unique_ptr<uint8_t[]> new_frame_data_rgba;
+      new_frame_data_rgba.reset(new uint8_t[width * height * 4]);
+      libyuv::ARGBScale(frame->data(), frame->stride(), frame->size().width(),
+                        frame->size().height(), new_frame_data_rgba.get(),
+                        width * 4, width, height, libyuv::kFilterBilinear);
+      // convert tot I420
+      libyuv::ConvertToI420(new_frame_data_rgba.get(), 0,
+                            i420_buffer_->MutableDataY(), i420_buffer_->StrideY(),
+                            i420_buffer_->MutableDataU(), i420_buffer_->StrideU(),
+                            i420_buffer_->MutableDataV(), i420_buffer_->StrideV(),
+                            0, 0, width, height, width, height,
+                            libyuv::kRotate0, libyuv::FOURCC_ARGB);                  
+    } else {
+      libyuv::ConvertToI420(
+          frame->data(), 0, i420_buffer_->MutableDataY(),
+          i420_buffer_->StrideY(), i420_buffer_->MutableDataU(),
+          i420_buffer_->StrideU(), i420_buffer_->MutableDataV(),
+          i420_buffer_->StrideV(), x_, y_,
 #ifdef WEBRTC_WIN
-                          rect_.width(), rect_.height(),
+          rect_.width(), rect_.height(),
 #else
-                          width, height,
+          width, height,
 #endif
-                          width, height, libyuv::kRotate0, libyuv::FOURCC_ARGB);
+          width, height, libyuv::kRotate0, libyuv::FOURCC_ARGB);
+    }
 
     OnFrame(webrtc::VideoFrame(i420_buffer_, 0, rtc::TimeMillis(),
                                webrtc::kVideoRotation_0));
   }
+
 #ifdef WEBRTC_WIN
   __except (filterException(GetExceptionCode(), GetExceptionInformation())) {
   }
