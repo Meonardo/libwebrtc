@@ -83,6 +83,7 @@ class RTCDesktopCapturerImpl : public RTCDesktopCapturer,
   uint32_t y_ = 0;
   uint32_t w_ = 0;
   uint32_t h_ = 0;
+  bool scale_required_ = false;
 };
 
 }  // namespace libwebrtc

@@ -91,7 +91,7 @@ bool VcmCapturer::CaptureStarted() {
 
 void VcmCapturer::StopCapture() {
   worker_thread_->BlockingCall([&] {
-    vcm_->StopCapture();
+    // vcm_->StopCapture();
     // Release reference to VCM.
     vcm_ = nullptr;
   });
